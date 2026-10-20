@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 9+ blocks cleartext HTTP by default, which is why the Plex on-deck request fails with
+  "Cleartext HTTP traffic to ... not permitted" without this.
+
+  A Plex Media Server on a home network speaks plain HTTP on its own port and has no certificate, so
+  there is nothing to pin and nothing to verify. Rather than switch cleartext on for the whole app,
+  this permits it only for the addresses a home Plex server actually lives at.
+
+  The catch: Android matches <domain> by hostname suffix, and an IP-literal host does not get suffix
+  matching — 192.168.0.0 in a <domain> does NOT cover 192.168.120.230. A literal address therefore has
+  to be named exactly, which a build cannot know in advance because the server address comes from a
+  theme's plex_url.
+
+  So the rule is expressed the way the platform actually works:
+    * hosts.local                 — mDNS names such as plex.local, and .local subdomains
+    * the IP-literal entries      — the addresses this app is known to contact
+  Adding a server on another LAN address means adding one <domain> line here.
+-->
+<network-security-config>
+    <!-- HTTPS everywhere else, exactly as the platform default. -->
+    <base-config cleartextTrafficPermitted="false" />
+
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- mDNS / Bonjour names a Plex server commonly advertises, and any .local subdomain. -->
+        <domain includeSubdomains="true">local</domain>
+        <!-- Loopback, for a server running on the TV itself or a port-forwarded local proxy. -->
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <!-- The home Plex server this launcher is configured for. An IP literal only matches itself,
+             so the address is named in full rather than by a subnet. -->
+        <domain includeSubdomains="false">192.168.120.230</domain>
+    </domain-config>
+</network-security-config>

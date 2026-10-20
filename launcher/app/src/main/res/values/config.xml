@@ -105,6 +105,22 @@
     <string-array name="app_keys" translatable="false">
     </string-array>
 
+    <!-- The Continue Watching row: while the Plex tile is focused, the Plex Media Server's own on-deck
+         list appears above the dock, each item a poster with a progress bar. Off by default, because it
+         needs a server address and a token, and it is the launcher's only network call. Set the two keys
+         below in a theme's config.json rather than here: a token in a build is a token in the repo. -->
+    <bool name="continue_watching">false</bool>
+    <!-- Server address, "192.168.120.230" or "http://192.168.120.230:32400" (the scheme and Plex's port
+         32400 are filled in when left off; a trailing slash is dropped). Empty disables the row. -->
+    <string name="plex_url" translatable="false"></string>
+    <!-- Your Plex account's X-Plex-Token, from Plex Web: any item > Get Info > View XML, then copy the
+         X-Plex-Token from that URL. It is account-wide, so keep it in the gitignored theme config.json
+         and revoke it under plex.tv Settings > Authorized Devices if it ever leaks. Empty means the
+         server will refuse the request and the row stays empty. -->
+    <string name="plex_token" translatable="false"></string>
+    <!-- How many on-deck items the row shows at most. -->
+    <integer name="continue_watching_max">8</integer>
+
     <!-- Show the Solar Hijri (Shamsi) date used in Iran and Afghanistan, e.g. "27 Mehr 1405", above the
          Gregorian date. -->
     <bool name="shamsi_date">false</bool>

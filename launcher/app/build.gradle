@@ -45,4 +45,8 @@ dependencies {
     implementation 'androidx.dynamicanimation:dynamicanimation:1.0.0'
     // Test only (never in the APK): plain JVM tests for the module card validators, src/test.
     testImplementation 'junit:junit:4.13.2'
+    // Test only: the unit tests run against a stub org.json that throws on every call, so the Plex
+    // parsing tests need the real implementation on the test classpath. It is the same API the
+    // platform provides at runtime, so nothing here ships in the APK.
+    testImplementation 'org.json:json:20240303'
 }

@@ -10,6 +10,10 @@
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- The Continue Watching row (continue_watching) asks a Plex Media Server on the same LAN for its
+         on-deck list, so it needs the Internet permission. A normal permission, granted at install; the
+         only host ever contacted is the plex_url a theme supplies. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Needed since Android 10 to read the Wi-Fi network name for the network pill. Never requested at
          runtime: build-and-install grants it with pm grant, so lint's Android 12 "ask for COARSE with
          FINE" rule does not apply here. -->
@@ -49,6 +53,7 @@
         android:banner="@drawable/banner"
         android:theme="@style/Theme.TvHome"
         android:allowBackup="false"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:localeConfig="@xml/locales_config">
 
         <activity

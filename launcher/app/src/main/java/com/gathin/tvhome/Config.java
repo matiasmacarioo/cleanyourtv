@@ -108,6 +108,14 @@ final class Config {
     final List<RaceWeekend.Race> raceCalendar;
     /** Cinematic top shelf (config.xml, cinematic_home): the focused dock app's artwork behind a larger shelf. */
     final boolean cinematicHome;
+    /** The Plex on-deck row above the dock (config.xml, continue_watching). */
+    final boolean continueWatching;
+    /** That row's server address, normalised to a usable root; empty when no Plex is configured. */
+    final String plexUrl;
+    /** The Plex token, or empty. Kept out of every log line and commit. */
+    final String plexToken;
+    /** Most items the row shows (config.xml, continue_watching_max). */
+    final int continueWatchingMax;
 
     private Config(List<String> dockApps, boolean fillDock, List<String> hiddenApps, String liveTvPackage,
                    String liveTvAction, Map<String, String> launchActions, Map<String, String> appLabels,
@@ -119,7 +127,8 @@ final class Config {
                    int wallpaperRotationMinutes, int wallpaperDim, boolean overlayApplied,
                    Festival festival, int[] inputKeycodes, List<String> appKeys,
                    List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean bluetoothPill,
-                   boolean inputKeyServiceTv) {
+                   boolean inputKeyServiceTv, boolean continueWatching, String plexUrl, String plexToken,
+                   int continueWatchingMax) {
         this.inputKeycodes = inputKeycodes;
         this.inputKeyServiceTv = inputKeyServiceTv;
         this.appKeys = Collections.unmodifiableList(appKeys);
@@ -163,6 +172,10 @@ final class Config {
         this.festival = festival;
         this.raceCalendar = Collections.unmodifiableList(raceCalendar);
         this.cinematicHome = cinematicHome;
+        this.continueWatching = continueWatching;
+        this.plexUrl = plexUrl;
+        this.plexToken = plexToken;
+        this.continueWatchingMax = continueWatchingMax;
     }
 
     /** The folder the theme tools push into; null when external storage is unavailable. */
@@ -207,6 +220,10 @@ final class Config {
         boolean inputKeyServiceTv = res.getBoolean(R.bool.input_key_service_tv);
         List<String> appKeys = new ArrayList<>(Arrays.asList(res.getStringArray(R.array.app_keys)));
         boolean cinematic = res.getBoolean(R.bool.cinematic_home);
+        boolean continueWatching = res.getBoolean(R.bool.continue_watching);
+        String plexUrlRaw = res.getString(R.string.plex_url).trim();
+        String plexToken = res.getString(R.string.plex_token).trim();
+        int continueWatchingMax = res.getInteger(R.integer.continue_watching_max);
         boolean applied = false;
 
         File dir = dir(ctx);
@@ -249,6 +266,10 @@ final class Config {
             inputKeyServiceTv = bool(json, "input_key_service_tv", inputKeyServiceTv);
             appKeys = stringList(json, "app_keys", appKeys);
             cinematic = bool(json, "cinematic_home", cinematic);
+            continueWatching = bool(json, "continue_watching", continueWatching);
+            plexUrlRaw = string(json, "plex_url", plexUrlRaw).trim();
+            plexToken = string(json, "plex_token", plexToken).trim();
+            continueWatchingMax = integer(json, "continue_watching_max", continueWatchingMax, 1, 20);
         }
         // A theme push or reset invalidates choices made on the TV. On first use, remember the
         // current theme without clearing choices from an older launcher version.
@@ -303,7 +324,9 @@ final class Config {
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, applied,
                 festival, inputKeycodes, appKeys, json == null ? Collections.emptyList() : raceCalendar(json), cinematic,
-                bluetoothPill, inputKeyServiceTv);
+                bluetoothPill, inputKeyServiceTv,
+                continueWatching && !PlexUrls.normalise(plexUrlRaw).isEmpty(),
+                PlexUrls.normalise(plexUrlRaw), plexToken, Math.max(1, continueWatchingMax));
     }
 
     /**
