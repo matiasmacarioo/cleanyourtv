@@ -71,6 +71,8 @@ final class Config {
     /** Reorder button in the top bar (config.xml reorder_button); the Settings long-press menu offers it either way. */
     final boolean reorderButton;
     final String vpnApp;
+    /** The Bluetooth pill in the top bar (config.xml, bluetooth_pill): the connected audio device's name. */
+    final boolean bluetoothPill;
     final boolean showHomeSettingsShortcut;
     /** One line under the clock: CPU, free memory, free storage. Off unless config or a theme turns it on. */
     final boolean showStats;
@@ -114,7 +116,7 @@ final class Config {
                    int[] settingsKeycodes, boolean settingsKeyPanel, boolean wallpaperEnabled, File wallpaper, List<File> wallpapers,
                    int wallpaperRotationMinutes, int wallpaperDim, boolean overlayApplied,
                    Festival festival, int[] inputKeycodes, List<String> appKeys,
-                   List<RaceWeekend.Race> raceCalendar, boolean cinematicHome) {
+                   List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean bluetoothPill) {
         this.inputKeycodes = inputKeycodes;
         this.appKeys = Collections.unmodifiableList(appKeys);
         this.dockApps = Collections.unmodifiableList(dockApps);
@@ -140,6 +142,7 @@ final class Config {
         this.dockRow = dockRow;
         this.reorderButton = reorderButton;
         this.vpnApp = vpnApp;
+        this.bluetoothPill = bluetoothPill;
         this.showHomeSettingsShortcut = showHomeSettingsShortcut;
         this.showStats = showStats;
         this.appLibrary = appLibrary;
@@ -188,6 +191,7 @@ final class Config {
         boolean dockRow = res.getBoolean(R.bool.dock_row);
         boolean reorderButton = res.getBoolean(R.bool.reorder_button);
         String vpn = res.getString(R.string.vpn_app).trim();
+        boolean bluetoothPill = res.getBoolean(R.bool.bluetooth_pill);
         boolean homeSettings = res.getBoolean(R.bool.show_home_settings_shortcut);
         boolean showStats = res.getBoolean(R.bool.show_stats);
         boolean library = res.getBoolean(R.bool.app_library);
@@ -228,6 +232,7 @@ final class Config {
             dockRow = bool(json, "dock_row", dockRow);
             reorderButton = bool(json, "reorder_button", reorderButton);
             vpn = string(json, "vpn_app", vpn);
+            bluetoothPill = bool(json, "bluetooth_pill", bluetoothPill);
             homeSettings = bool(json, "show_home_settings_shortcut", homeSettings);
             showStats = bool(json, "show_stats", showStats);
             library = bool(json, "app_library", library);
@@ -291,7 +296,8 @@ final class Config {
                 shamsi, greetingName, moduleCards, reducedMotion, dockTitle, dockRow, reorderButton, vpn, homeSettings, showStats, library, background,
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, applied,
-                festival, inputKeycodes, appKeys, json == null ? Collections.emptyList() : raceCalendar(json), cinematic);
+                festival, inputKeycodes, appKeys, json == null ? Collections.emptyList() : raceCalendar(json), cinematic,
+                bluetoothPill);
     }
 
     /**

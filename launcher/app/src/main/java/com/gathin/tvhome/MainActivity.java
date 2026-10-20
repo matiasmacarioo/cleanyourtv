@@ -2,8 +2,13 @@ package com.gathin.tvhome;
 
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Dialog;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -131,6 +136,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView greeting;
     private View btnInputs;
     private TextView btnWifi;
+    private TextView btnBluetooth;
+    /** config bluetooth_pill (a theme's "bluetooth_pill"): the pill in the top bar. */
+    private boolean bluetoothPill;
+    /** The action the Bluetooth pill opens, resolved once (see bluetoothIntent). */
+    private String bluetoothTarget;
+    /** The connected audio device's name for the Bluetooth pill; null when nothing is connected or the name is unreadable. */
+    private String btDevice;
     private TextView shamsiDate;
     private TextView stats;
     private List<RaceWeekend.Race> raceCalendar;
@@ -256,12 +268,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (appLibrary != null) appLibrary.refresh();
         }
     };
+    /** Adapter on/off and a device connecting: the Bluetooth pill follows without polling. */
+    private final IntentFilter bluetoothFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+    private final BroadcastReceiver bluetoothReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            refreshBluetoothDevice();
+        }
+    };
+    /** Whether bluetoothReceiver got registered: a few firmwares refuse it, and unregister would throw then. */
+    private boolean bluetoothReceiverRegistered;
     private final Runnable minuteTick = new Runnable() {
         @Override
         public void run() {
             updateGreeting();
             updateRace();
             updateWifiLabel();
+            updateBluetoothLabel();
             sky.update();
             wallpaperPlayer.update();
             handler.postDelayed(this, MINUTE_MS);
@@ -334,6 +357,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             date.setPadding(0, (int) (4 * density), 0, 0);
         }
         vpnApp = cfg.vpnApp;
+        bluetoothPill = cfg.bluetoothPill;
         moduleCards = cfg.moduleCards;
         hiddenApps = new HashSet<>(cfg.hiddenApps);
 
@@ -478,6 +502,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             open(systemIntent(Settings.ACTION_WIFI_SETTINGS));
             return true;
         });
+        btnBluetooth = findViewById(R.id.btnBluetooth);
+        btnBluetooth.setOnClickListener(v -> open(bluetoothIntent()));
+        btnBluetooth.setOnLongClickListener(v -> {
+            open(bluetoothIntent());
+            return true;
+        });
+        btnBluetooth.setVisibility(cfg.bluetoothPill ? View.VISIBLE : View.GONE);
         btnSettings.setOnClickListener(v -> open(systemIntent(Settings.ACTION_SETTINGS)));
         btnReorder = findViewById(R.id.btnReorder);
         btnReorder.setOnClickListener(v -> toggleReorder());
@@ -506,6 +537,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         };
         btnInputs.setOnKeyListener(pillKeys);
         btnWifi.setOnKeyListener(pillKeys);
+        btnBluetooth.setOnKeyListener(pillKeys);
         btnSettings.setOnKeyListener(pillKeys);
         btnReorder.setOnKeyListener(pillKeys);
         if (advancedEffects) {
@@ -515,6 +547,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         .setDuration(160).start());
             }
         }
+        // The Bluetooth pill gets the same focus scale, and re-reads the connected device when it
+        // gains focus: connecting headphones is exactly when the user looks at the pill.
+        btnBluetooth.setOnFocusChangeListener((view, focused) -> {
+            if (advancedEffects) view.animate().scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f)
+                    .setDuration(160).start();
+            if (focused) refreshBluetoothDevice();
+        });
         if (festive) applyFestiveSkin((TextView) btnInputs, (TextView) btnSettings);
 
         // Hide the glass when focus leaves the tiles.
@@ -527,6 +566,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         packageFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
         packageFilter.addAction(Intent.ACTION_PACKAGE_CHANGED);
         packageFilter.addDataScheme("package");
+        bluetoothFilter.addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
 
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
@@ -573,6 +613,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } else {
             registerReceiver(packageReceiver, packageFilter);
         }
+        // The filter holds only protected system broadcasts, so it registers without an export flag
+        // (the Android 14 rule exempts those). A few firmwares refuse even that: the pill then
+        // refreshes when Home resumes, when it gains focus and every minute tick instead.
+        try {
+            registerReceiver(bluetoothReceiver, bluetoothFilter);
+            bluetoothReceiverRegistered = true;
+        } catch (SecurityException ignored) {
+        }
     }
 
     @Override
@@ -592,6 +640,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateGreeting();
         updateRace();
         updateWifiLabel();
+        updateBluetoothLabel();
+        refreshBluetoothDevice();
         updateInputsButton();
         if (showStats) startStats();
         sky.update();
@@ -712,6 +762,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onStop() {
         super.onStop();
         unregisterReceiver(packageReceiver);
+        if (bluetoothReceiverRegistered) {
+            bluetoothReceiverRegistered = false;
+            unregisterReceiver(bluetoothReceiver);
+        }
         rebuildOnResume = true;
     }
 
@@ -1910,6 +1964,82 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
+    // ---- bluetooth pill ----------------------------------------------------------------------------
+
+    /**
+     * The Bluetooth pill: the connected audio device's name while one is connected ("AirPods"),
+     * otherwise the generic label, dimmed while the adapter is off; hidden where the device has no
+     * Bluetooth at all. Reading the adapter catches SecurityException: on Android 12+ it needs
+     * BLUETOOTH_CONNECT, which is never requested through a dialog (see AndroidManifest), and the
+     * pill shows the generic label then.
+     */
+    @SuppressLint("MissingPermission")
+    private void updateBluetoothLabel() {
+        if (!bluetoothPill) return;
+        boolean present = false, enabled = false;
+        try {
+            BluetoothAdapter adapter = btAdapter();
+            present = adapter != null;
+            enabled = present && adapter.isEnabled();
+        } catch (SecurityException ignored) {
+        }
+        String label = BluetoothLabel.of(present, enabled, btDevice, getString(R.string.bluetooth));
+        if (label == null) {
+            btnBluetooth.setVisibility(View.GONE);
+            return;
+        }
+        btnBluetooth.setVisibility(View.VISIBLE);
+        btnBluetooth.setText(label);
+        btnBluetooth.setAlpha(enabled ? 1f : 0.45f);
+    }
+
+    /**
+     * Re-reads the connected audio device for the pill (A2DP only: a paired remote or controller is
+     * not what the label is for) and refreshes the label once the answer is in. Runs when Bluetooth
+     * changes, when the pill gains focus and when Home resumes.
+     */
+    @SuppressLint("MissingPermission")
+    private void refreshBluetoothDevice() {
+        if (!bluetoothPill) return;
+        try {
+            BluetoothAdapter adapter = btAdapter();
+            if (adapter == null || !adapter.isEnabled()) {
+                btDevice = null;
+                updateBluetoothLabel();
+                return;
+            }
+            adapter.getProfileProxy(this, new BluetoothProfile.ServiceListener() {
+                @Override
+                public void onServiceConnected(int profile, BluetoothProfile proxy) {
+                    String name = null;
+                    try {
+                        List<BluetoothDevice> connected = proxy.getConnectedDevices();
+                        if (!connected.isEmpty()) name = connected.get(0).getName();
+                    } catch (SecurityException ignored) {
+                        // Android 12+ without BLUETOOTH_CONNECT: stay with the generic label.
+                    }
+                    btDevice = name;
+                    try {
+                        adapter.closeProfileProxy(profile, proxy);
+                    } catch (Exception ignored) {
+                    }
+                    handler.post(MainActivity.this::updateBluetoothLabel);
+                }
+
+                @Override
+                public void onServiceDisconnected(int profile) {
+                }
+            }, BluetoothProfile.A2DP);
+        } catch (SecurityException ignored) {
+            updateBluetoothLabel();
+        }
+    }
+
+    private BluetoothAdapter btAdapter() {
+        BluetoothManager bm = getSystemService(BluetoothManager.class);
+        return bm != null ? bm.getAdapter() : null;
+    }
+
     // ---- festive skin ------------------------------------------------------------------------------
 
     /**
@@ -2023,6 +2153,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } catch (Exception e) {
             Toast.makeText(this, R.string.not_available, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /**
+     * The Bluetooth pill's destination. Android TV firmware usually answers no
+     * {@code android.settings.BLUETOOTH_SETTINGS}, so the pair-accessory screen is tried first (see
+     * {@link BluetoothIntents}); the winner is remembered for the rest of the process, and the pill
+     * falls back to the plain settings action, whose click shows the can't-open toast on firmware
+     * that has neither.
+     */
+    private Intent bluetoothIntent() {
+        if (bluetoothTarget == null) {
+            bluetoothTarget = BluetoothIntents.pick(action ->
+                    new Intent(action).resolveActivity(getPackageManager()) != null);
+        }
+        return new Intent(bluetoothTarget);
     }
 
     private void open(Intent i) {

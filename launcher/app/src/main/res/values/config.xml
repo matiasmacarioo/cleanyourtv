@@ -18,6 +18,11 @@
          the first grid apps, so the dock never shows a gap. false leaves them empty (#162); a theme can
          set "fill_dock": false. -->
     <bool name="fill_dock">true</bool>
+    <!-- A Bluetooth pill in the top bar: reads the connected audio device's name (the pill shows
+         "AirPods" while they are connected) and opens Remotes & Accessories when pressed. Off unless
+         config or a theme says otherwise ("bluetooth_pill": true); hidden altogether on devices with
+         no Bluetooth adapter. -->
+    <bool name="bluetooth_pill">false</bool>
 
     <!-- Apps never shown as tiles (e.g. the Live TV app, which the Inputs menu already covers). -->
     <string-array name="hidden_apps">
