@@ -307,6 +307,17 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/btnBluetooth"
+                    style="@style/TopButton"
+                    android:maxWidth="180dp"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:text="@string/bluetooth"
+                    android:drawableStart="@drawable/ic_bluetooth"
+                    android:nextFocusDown="@+id/grid"
+                    android:visibility="gone" />
+
+                <TextView
                     android:id="@+id/btnInputs"
                     style="@style/TopButton"
                     android:text="@string/inputs"
@@ -322,17 +333,6 @@
                     android:text="@string/wifi"
                     android:drawableStart="@drawable/ic_wifi"
                     android:nextFocusDown="@+id/grid" />
-
-                <TextView
-                    android:id="@+id/btnBluetooth"
-                    style="@style/TopButton"
-                    android:maxWidth="180dp"
-                    android:singleLine="true"
-                    android:ellipsize="end"
-                    android:text="@string/bluetooth"
-                    android:drawableStart="@drawable/ic_bluetooth"
-                    android:nextFocusDown="@+id/grid"
-                    android:visibility="gone" />
 
                 <TextView
                     android:id="@+id/btnReorder"

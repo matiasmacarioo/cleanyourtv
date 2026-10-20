@@ -89,6 +89,13 @@
          reach InputKeyService. Leave empty to omit. -->
     <integer-array name="input_key_keycodes">
     </integer-array>
+    <!-- Whether InputKeyService also consumes KEYCODE_TV (170), the remote's tuner/TV button, and opens the
+         input switcher for it. true is the long-standing behaviour; false hands the key back to the
+         firmware's own TV app, for sets where the button already opens Live TV and a service claiming it
+         would take that away (or where the button is mapped in app_keys and must win). KEYCODE_TV_INPUT
+         is consumed either way. Can also be set from a theme's config.json
+         ("input_key_service_tv": false). -->
+    <bool name="input_key_service_tv">true</bool>
     <!-- Remote buttons that open an app, as "keycode:package" or "KEYCODE_NAME:package" (INPUT_KEY_SERVICE=1 or
          HOME_KEY_SERVICE=1; both read this one list, and a theme's config.json can set it too). On Google TV the
          YouTube button sends 190 (KEYCODE_BUTTON_3) to the stock launcher, so it does nothing once launcherx

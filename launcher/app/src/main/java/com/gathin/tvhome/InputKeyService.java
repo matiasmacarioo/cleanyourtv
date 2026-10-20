@@ -21,6 +21,7 @@ public class InputKeyService extends AccessibilityService {
     private static final String ACTION_VIEW_INPUTS = "com.android.tv.action.VIEW_INPUTS";
 
     private int[] inputKeycodes = new int[0];
+    private boolean tvtKey;
     private Map<Integer, String> appKeys = Collections.emptyMap();
 
     @Override
@@ -29,13 +30,12 @@ public class InputKeyService extends AccessibilityService {
         // From config.xml or a theme's config.json; theme.sh rebinds this service after a push.
         Config config = Config.load(this);
         inputKeycodes = config.inputKeycodes;
+        tvtKey = config.inputKeyServiceTv;
         appKeys = RemoteKeys.parseAppKeys(config.appKeys);
     }
 
     private boolean isInputKey(int keyCode) {
-        if (keyCode == KeyEvent.KEYCODE_TV || keyCode == KeyEvent.KEYCODE_TV_INPUT) return true;
-        for (int code : inputKeycodes) if (keyCode == code) return true;
-        return false;
+        return InputKeys.opensSwitcher(keyCode, tvtKey, appKeys.containsKey(keyCode), inputKeycodes);
     }
 
     @Override

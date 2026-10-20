@@ -86,6 +86,8 @@ final class Config {
     final int[] settingsKeycodes;
     /** Extra keycodes that open the input switcher in InputKeyService (config.xml input_key_keycodes). */
     final int[] inputKeycodes;
+    /** Whether InputKeyService also claims KEYCODE_TV (config.xml, input_key_service_tv). */
+    final boolean inputKeyServiceTv;
     /** Remote buttons that open an app, "keycode:package" or "KEYCODE_NAME:package" (config.xml app_keys). */
     final List<String> appKeys;
     /** The Settings button opens the quick settings panel instead of the TV's Settings (settings_key_panel). */
@@ -116,8 +118,10 @@ final class Config {
                    int[] settingsKeycodes, boolean settingsKeyPanel, boolean wallpaperEnabled, File wallpaper, List<File> wallpapers,
                    int wallpaperRotationMinutes, int wallpaperDim, boolean overlayApplied,
                    Festival festival, int[] inputKeycodes, List<String> appKeys,
-                   List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean bluetoothPill) {
+                   List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean bluetoothPill,
+                   boolean inputKeyServiceTv) {
         this.inputKeycodes = inputKeycodes;
+        this.inputKeyServiceTv = inputKeyServiceTv;
         this.appKeys = Collections.unmodifiableList(appKeys);
         this.dockApps = Collections.unmodifiableList(dockApps);
         this.fillDock = fillDock;
@@ -200,6 +204,7 @@ final class Config {
         int[] settingsKeycodes = res.getIntArray(R.array.settings_key_keycodes);
         boolean settingsKeyPanel = res.getBoolean(R.bool.settings_key_panel);
         int[] inputKeycodes = res.getIntArray(R.array.input_key_keycodes);
+        boolean inputKeyServiceTv = res.getBoolean(R.bool.input_key_service_tv);
         List<String> appKeys = new ArrayList<>(Arrays.asList(res.getStringArray(R.array.app_keys)));
         boolean cinematic = res.getBoolean(R.bool.cinematic_home);
         boolean applied = false;
@@ -241,6 +246,7 @@ final class Config {
             settingsKeycodes = intArray(json, "settings_key_keycodes", settingsKeycodes);
             settingsKeyPanel = bool(json, "settings_key_panel", settingsKeyPanel);
             inputKeycodes = intArray(json, "input_key_keycodes", inputKeycodes);
+            inputKeyServiceTv = bool(json, "input_key_service_tv", inputKeyServiceTv);
             appKeys = stringList(json, "app_keys", appKeys);
             cinematic = bool(json, "cinematic_home", cinematic);
         }
@@ -297,7 +303,7 @@ final class Config {
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, applied,
                 festival, inputKeycodes, appKeys, json == null ? Collections.emptyList() : raceCalendar(json), cinematic,
-                bluetoothPill);
+                bluetoothPill, inputKeyServiceTv);
     }
 
     /**
