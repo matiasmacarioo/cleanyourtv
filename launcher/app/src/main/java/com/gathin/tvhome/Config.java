@@ -116,6 +116,14 @@ final class Config {
     final String plexToken;
     /** Most items the row shows (config.xml, continue_watching_max). */
     final int continueWatchingMax;
+    /** The Spotify recently-played row above the dock (config.xml, spotify_row). */
+    final boolean spotifyRow;
+    /** The Spotify app's client id; public, and empty when Spotify is not configured. */
+    final String spotifyClientId;
+    /** The PKCE refresh token, or empty. A credential: kept out of every log line and commit. */
+    final String spotifyRefreshToken;
+    /** Most recently-played items the row shows (config.xml, spotify_row_max). */
+    final int spotifyRowMax;
 
     private Config(List<String> dockApps, boolean fillDock, List<String> hiddenApps, String liveTvPackage,
                    String liveTvAction, Map<String, String> launchActions, Map<String, String> appLabels,
@@ -128,7 +136,8 @@ final class Config {
                    Festival festival, int[] inputKeycodes, List<String> appKeys,
                    List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean bluetoothPill,
                    boolean inputKeyServiceTv, boolean continueWatching, String plexUrl, String plexToken,
-                   int continueWatchingMax) {
+                   int continueWatchingMax, boolean spotifyRow, String spotifyClientId,
+                   String spotifyRefreshToken, int spotifyRowMax) {
         this.inputKeycodes = inputKeycodes;
         this.inputKeyServiceTv = inputKeyServiceTv;
         this.appKeys = Collections.unmodifiableList(appKeys);
@@ -176,6 +185,10 @@ final class Config {
         this.plexUrl = plexUrl;
         this.plexToken = plexToken;
         this.continueWatchingMax = continueWatchingMax;
+        this.spotifyRow = spotifyRow;
+        this.spotifyClientId = spotifyClientId;
+        this.spotifyRefreshToken = spotifyRefreshToken;
+        this.spotifyRowMax = spotifyRowMax;
     }
 
     /** The folder the theme tools push into; null when external storage is unavailable. */
@@ -224,6 +237,10 @@ final class Config {
         String plexUrlRaw = res.getString(R.string.plex_url).trim();
         String plexToken = res.getString(R.string.plex_token).trim();
         int continueWatchingMax = res.getInteger(R.integer.continue_watching_max);
+        boolean spotifyRow = res.getBoolean(R.bool.spotify_row);
+        String spotifyClientId = res.getString(R.string.spotify_client_id).trim();
+        String spotifyRefreshToken = res.getString(R.string.spotify_refresh_token).trim();
+        int spotifyRowMax = res.getInteger(R.integer.spotify_row_max);
         boolean applied = false;
 
         File dir = dir(ctx);
@@ -270,6 +287,10 @@ final class Config {
             plexUrlRaw = string(json, "plex_url", plexUrlRaw).trim();
             plexToken = string(json, "plex_token", plexToken).trim();
             continueWatchingMax = integer(json, "continue_watching_max", continueWatchingMax, 1, 20);
+            spotifyRow = bool(json, "spotify_row", spotifyRow);
+            spotifyClientId = string(json, "spotify_client_id", spotifyClientId).trim();
+            spotifyRefreshToken = string(json, "spotify_refresh_token", spotifyRefreshToken).trim();
+            spotifyRowMax = integer(json, "spotify_row_max", spotifyRowMax, 1, 50);
         }
         // A theme push or reset invalidates choices made on the TV. On first use, remember the
         // current theme without clearing choices from an older launcher version.
@@ -326,7 +347,20 @@ final class Config {
                 festival, inputKeycodes, appKeys, json == null ? Collections.emptyList() : raceCalendar(json), cinematic,
                 bluetoothPill, inputKeyServiceTv,
                 continueWatching && !PlexUrls.normalise(plexUrlRaw).isEmpty(),
-                PlexUrls.normalise(plexUrlRaw), plexToken, Math.max(1, continueWatchingMax));
+                PlexUrls.normalise(plexUrlRaw), plexToken, Math.max(1, continueWatchingMax),
+                spotifyRow && new SpotifyAuth(spotifyClientId, spotifyRefreshToken).isConfigured(),
+                spotifyClientId, preferredSpotifyToken(ctx, spotifyRefreshToken),
+                Math.max(1, Math.min(50, spotifyRowMax)));
+    }
+
+    /**
+     * The Spotify refresh token to actually run on: the one Spotify last rotated in, when there is
+     * one, otherwise the theme's. Spotify retires a token as soon as it issues a replacement, so the
+     * newer of the two is the only one that works; the theme value is just the seed for a fresh setup.
+     */
+    private static String preferredSpotifyToken(Context ctx, String fromTheme) {
+        String rotated = SpotifyTokenStore.readIfPresent(ctx);
+        return rotated != null ? rotated : fromTheme;
     }
 
     /**

@@ -117,10 +117,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** The top shelf: heroName, plus the cinematic shelf's "Last opened" line and dock position dots. */
     private View hero;
     /** The Plex on-deck shelf (continue_watching); null unless a theme configured Plex. */
-    private ContinueWatchingRow continueWatching;
+    private HeroRow continueWatching;
     private ContinueWatching continueWatchingData;
     /** The dock position that owns the row: the Plex app's tile, resolved at load. */
     private int continueWatchingPosition = -1;
+    /** The Spotify recently-played shelf (spotify_row); null unless a theme configured Spotify. */
+    private HeroRow spotifyShelf;
+    private SpotifyRecent spotifyData;
+    /** The dock position that owns the Spotify shelf, resolved at load. */
+    private int spotifyPosition = -1;
+    /** The shelf currently shown (at most one), so the hero name and positioning agree on which. */
+    private HeroRow activeShelf;
+    /** That shelf's dock position, or -1. */
+    private int activeShelfPosition = -1;
     private TextView heroMeta;
     private LinearLayout heroDots;
     /** Cinematic top shelf (config.xml, cinematic_home): the focused dock app's artwork behind a larger shelf. */
@@ -343,10 +352,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // still follows the dock. The on-deck shelf must outlive this, so hide the name rather than the
         // whole hero group when a theme turned Continue Watching on.
         if (!cfg.dockTitle) {
-            if (cfg.continueWatching) heroName.setVisibility(View.GONE);
+            if (cfg.continueWatching || cfg.spotifyRow) heroName.setVisibility(View.GONE);
             else hero.setVisibility(View.GONE);
         }
         setUpContinueWatching(cfg);
+        setUpSpotifyRow(cfg);
         greeting = findViewById(R.id.greeting);
         greetingColor = greeting.getCurrentTextColor();
         btnWifi = findViewById(R.id.btnWifi);
@@ -733,6 +743,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         lastFocusedKey = returnKey;
         lastFocused = returnSlot;
         resolveContinueWatchingPosition();
+        resolveSpotifyPosition();
     }
 
     /**
@@ -797,6 +808,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         wallpaperPlayer.close();
         if (continueWatchingData != null) continueWatchingData.shutdown();
         if (continueWatching != null) continueWatching.shutdown();
+        if (spotifyData != null) spotifyData.shutdown();
+        if (spotifyShelf != null) spotifyShelf.shutdown();
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
         if (tim != null) tim.unregisterCallback(inputCallback);
@@ -1208,7 +1221,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
-    // ---- continue watching -------------------------------------------------------------------------
+    // ---- hero shelves (Continue Watching) ----------------------------------------------------------
 
     /**
      * Sets up the Plex on-deck shelf when a theme asked for it (continue_watching plus a plex_url).
@@ -1219,13 +1232,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (!cfg.continueWatching) return;
         View host = findViewById(R.id.continueWatching);
         if (host == null) return;
-        continueWatchingData = new ContinueWatching(this, cfg.plexUrl, cfg.plexToken, cfg.continueWatchingMax);
+        final String url = cfg.plexUrl;
+        final String token = cfg.plexToken;
+        continueWatchingData = new ContinueWatching(this, url, token, cfg.continueWatchingMax);
         continueWatchingData.primeFromCache();
-        PlexClient client = new PlexClient(cfg.plexUrl, cfg.plexToken);
-        continueWatching = new ContinueWatchingRow(this, host, client);
-        continueWatching.setServer(cfg.plexUrl, cfg.plexToken);
-        continueWatching.setListener(new ContinueWatchingRow.Listener() {
-            @Override public void onItemFocused(PlexItem item, View card) {
+        final PlexClient client = new PlexClient(url, token);
+        continueWatchingClient = client;
+        continueWatchingBase = url;
+        continueWatchingToken = token;
+        continueWatching = new HeroRow(this, host, R.id.continueWatchingItems, this::plexArt);
+        continueWatching.setListener(new HeroRow.Listener() {
+            @Override public void onItemFocused(RowItem item, View card) {
                 hideHeroName();                               // the shelf replaces the app name
             }
 
@@ -1234,44 +1251,125 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (continueWatchingPosition >= 0) focusTile(continueWatchingPosition);
             }
 
-            @Override public void onItemClicked(PlexItem item) {
-                open(PlexPage.itemIntent(MainActivity.this, cfg.plexUrl, cfg.plexToken, item));
+            @Override public void onItemClicked(RowItem item) {
+                if (item instanceof PlexItem) {
+                    open(PlexPage.itemIntent(MainActivity.this, url, token, (PlexItem) item));
+                }
             }
         });
         continueWatching.setItems(continueWatchingData.current());
     }
 
     /**
-     * Shows or hides the shelf for the tile at {@code position}. Only the Plex tile has one, so every
-     * other tile focus takes the row away again.
+     * Sets up the Spotify recently-played shelf when a theme asked for it (spotify_row plus a client
+     * id and a refresh token). Like Plex's, it fetches nothing until its tile takes focus.
+     *
+     * <p>The one thing it does beyond Plex's setup is a token sink: Spotify can hand back a new
+     * refresh token on any refresh, and dropping it would break the row at the next restart. It is
+     * written straight back into the theme's config.json, which is the only place it lives.
+     */
+    private void setUpSpotifyRow(Config cfg) {
+        if (!cfg.spotifyRow) return;
+        View host = findViewById(R.id.spotifyRow);
+        if (host == null) return;
+        SpotifyAuth auth = new SpotifyAuth(cfg.spotifyClientId, cfg.spotifyRefreshToken);
+        spotifyData = new SpotifyRecent(this, auth, cfg.spotifyRowMax,
+                rotated -> SpotifyTokenStore.save(this, rotated));
+        spotifyData.primeFromCache();
+        spotifyShelf = new HeroRow(this, host, R.id.spotifyRowItems, this::httpArt);
+        spotifyShelf.setListener(new HeroRow.Listener() {
+            @Override public void onItemFocused(RowItem item, View card) {
+                hideHeroName();
+            }
+
+            @Override public void onDownFromRow() {
+                if (spotifyPosition >= 0) focusTile(spotifyPosition);
+            }
+
+            @Override public void onItemClicked(RowItem item) {
+                if (item instanceof SpotifyItem) {
+                    open(SpotifyPage.itemIntent(MainActivity.this, (SpotifyItem) item));
+                }
+            }
+        });
+        spotifyShelf.setItems(spotifyData.current());
+    }
+
+    /** Fetches a Plex poster, assembling the server-scoped, token-bearing URL the row is given a path for. */
+    private byte[] plexArt(String path) {
+        if (continueWatching == null) return null;
+        // The row hands back the server-relative path; PlexUrls makes it absolute.
+        String url = PlexUrls.poster(continueWatchingBase, continueWatchingToken, path,
+                continueWatching.artPixelWidth(), continueWatching.artPixelHeight());
+        return continueWatchingClient == null ? null : continueWatchingClient.posterBytes(url);
+    }
+
+    /** Fetches Spotify artwork; its URLs are already absolute, so this is a plain GET. */
+    private byte[] httpArt(String url) {
+        return spotifyData == null ? null : spotifyData.artBytes(url);
+    }
+
+    /**
+     * Shows or hides a shelf for the tile at {@code position}. Two services can each own a shelf, but
+     * only one tile is focused at a time so only one is ever up; every other tile takes it away again.
      */
     private void updateContinueWatching(int position) {
-        if (continueWatching == null) return;
-        if (position != continueWatchingPosition) {
-            continueWatching.setItems(java.util.Collections.emptyList());
+        // Whatever the previous tile had up comes down first, so the two shelves never overlap.
+        HeroRow next = null;
+        if (continueWatching != null && position == continueWatchingPosition) {
+            next = continueWatching;
+        } else if (spotifyShelf != null && position == spotifyPosition) {
+            next = spotifyShelf;
+        }
+        if (next == null) {
+            hideShelves();
             return;
         }
-        // Show what we have at once (cache on a cold start), then refresh in the background.
-        continueWatching.setItems(continueWatchingData.current());
-        positionContinueWatching();
-        // Load once on first sight of the shelf; refreshIfStale throttles later visits.
-        continueWatchingData.load(items -> {
-            if (continueWatching == null) return;
-            if (lastFocused == continueWatchingPosition) {
-                continueWatching.setItems(items);
-                positionContinueWatching();
-            }
-        });
+        if (activeShelf != null && activeShelf != next) activeShelf.setItems(java.util.Collections.emptyList());
+        activeShelf = next;
+        activeShelfPosition = position;
+
+        if (next == continueWatching) {
+            // Show what we have at once (cache on a cold start), then refresh in the background.
+            continueWatching.setItems(continueWatchingData.current());
+            positionShelf();
+            continueWatchingData.load(items -> {
+                if (continueWatching == null) return;
+                if (lastFocused == continueWatchingPosition) {
+                    continueWatching.setItems(items);
+                    positionShelf();
+                }
+            });
+        } else {
+            spotifyShelf.setItems(spotifyData.current());
+            positionShelf();
+            spotifyData.load(items -> {
+                if (spotifyShelf == null) return;
+                if (lastFocused == spotifyPosition) {
+                    spotifyShelf.setItems(items);
+                    positionShelf();
+                }
+            });
+        }
+    }
+
+    /** Takes every shelf down. Used when focus leaves the dock, or a tile without one is focused. */
+    private void hideShelves() {
+        if (continueWatching != null) continueWatching.setItems(java.util.Collections.emptyList());
+        if (spotifyShelf != null) spotifyShelf.setItems(java.util.Collections.emptyList());
+        activeShelf = null;
+        activeShelfPosition = -1;
     }
 
     /**
-     * Places the shelf just above the dock, where {@link #showHero} puts the app name. The row is a
-     * sibling of the hero in the root frame, so it is positioned rather than laid out.
+     * Places the active shelf just above the dock, where {@link #showHero} puts the app name. The row
+     * is a sibling of the hero in the root frame, so it is positioned rather than laid out.
      */
-    private void positionContinueWatching() {
-        if (continueWatching == null || !continueWatching.hasItems()) return;
-        View row = continueWatching.view();
-        int pos = Math.max(0, Math.min(continueWatchingPosition, adapter.getItemCount() - 1));
+    private void positionShelf() {
+        HeroRow shelf = activeShelf;
+        if (shelf == null || !shelf.hasItems()) return;
+        View row = shelf.view();
+        int pos = Math.max(0, Math.min(activeShelfPosition, adapter.getItemCount() - 1));
         RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(pos);
         if (vh == null) return;
         View tile = vh.itemView;
@@ -1280,23 +1378,41 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         row.setY(Math.max(0f, y));
     }
 
+    /** True when the shelf for the dock tile at {@code position} is up and has something to focus. */
+    private boolean shelfIsUpAt(int position) {
+        return activeShelf != null && activeShelfPosition == position && activeShelf.hasItems();
+    }
+
     /**
-     * Finds the dock tile that owns the shelf: the Plex package from the theme's plex_app (defaulting
-     * to the Plex for Android one). -1 when Plex is not in the dock, which leaves the row unused.
+     * Finds the dock tile that owns the Plex shelf. The package comes from the theme's plex_app,
+     * defaulting to Plex for Android. -1 when Plex is not in the dock, which leaves the row unused.
      */
     private void resolveContinueWatchingPosition() {
-        if (continueWatching == null || adapter == null) return;
-        String pkg = continueWatchingPackage;
+        continueWatchingPosition = dockPositionOf(continueWatchingPackage, continueWatching != null);
+    }
+
+    /** Finds the dock tile that owns the Spotify shelf. -1 when Spotify is not in the dock. */
+    private void resolveSpotifyPosition() {
+        spotifyPosition = dockPositionOf(SpotifyPage.PACKAGE, spotifyShelf != null);
+    }
+
+    /**
+     * The dock slot holding {@code pkg}, or -1. Only the dock row is searched, since a shelf is
+     * anchored to a dock tile. A null shelf means the service was never configured, so no search.
+     */
+    private int dockPositionOf(String pkg, boolean wanted) {
+        if (!wanted || adapter == null || pkg == null) return -1;
         for (int i = 0; i < Math.min(COLUMNS, adapter.getItemCount()); i++) {
-            if (pkg.equals(adapter.packageAt(i))) {
-                continueWatchingPosition = i;
-                return;
-            }
+            if (pkg.equals(adapter.packageAt(i))) return i;
         }
-        continueWatchingPosition = -1;
+        return -1;
     }
 
     private String continueWatchingPackage = ContinueWatchingDefaults.PLEX_PACKAGE;
+    /** The Plex server and token the poster loader assembles URLs from. */
+    private PlexClient continueWatchingClient;
+    private String continueWatchingBase = "";
+    private String continueWatchingToken = "";
 
     /** Hides the big app name so the on-deck shelf owns the shelf area. */
     private void hideHeroName() {
@@ -1373,8 +1489,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void fillHero(int position, String label) {
         heroName.setText(label);
         // The on-deck shelf hides the name while it is up; a move to another tile brings it back.
-        boolean shelfUp = continueWatching != null && continueWatching.hasItems()
-                && position == continueWatchingPosition;
+        boolean shelfUp = position == activeShelfPosition && activeShelf != null && activeShelf.hasItems();
         heroName.setAlpha(shelfUp ? 0f : 1f);
         if (!cinematic) return;
         updateHeroMeta(position);
@@ -1590,9 +1705,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void hideHero() {
-        if (continueWatching != null) {
-            continueWatching.setItems(java.util.Collections.emptyList());
-        }
+        hideShelves();
         if (!heroShown) return;
         stopAmbientAnimation();
         hero.animate().cancel();
@@ -1819,8 +1932,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
             // The Plex tile has the on-deck shelf above it: Up enters the shelf instead of the top bar.
             if (position < COLUMNS) {
-                if (position == continueWatchingPosition && continueWatching != null
-                        && continueWatching.hasItems() && continueWatching.focusFirst()) {
+                if (shelfIsUpAt(position) && activeShelf.focusFirst()) {
                     grid.playSoundEffect(SoundEffectConstants.NAVIGATION_UP);
                     return true;
                 }

@@ -19,7 +19,7 @@ import java.util.List;
  * <p>Parsing is deliberately forgiving of missing fields: an item Plex describes only partially is
  * still worth showing, so anything absent becomes an empty string or zero rather than an error.
  */
-final class PlexItem {
+final class PlexItem implements RowItem {
     /** Stable id for the row's focus memory; Plex's own {@code ratingKey}. */
     final String ratingKey;
     /** An episode or movie; Plex's {@code type}. */
@@ -94,6 +94,34 @@ final class PlexItem {
         if (thumb != null && !thumb.isEmpty()) return thumb;
         if (showThumb != null && !showThumb.isEmpty()) return showThumb;
         return null;
+    }
+
+    // ---- RowItem: what the hero shelf above the dock draws ----------------------------------------
+
+    @Override public String rowTitle() {
+        return title;
+    }
+
+    @Override public String rowSubtitle() {
+        return subtitle();
+    }
+
+    @Override public float rowProgress() {
+        return progress();
+    }
+
+    /** Plex always reports a duration, so the bar is meaningful whenever there is one. */
+    @Override public boolean rowHasProgress() {
+        return duration > 0;
+    }
+
+    /**
+     * The absolute URL the shelf fetches. Plex serves artwork from the server root and needs the
+     * token, so the row hands the loader a URL it can use directly; {@link #posterPath()} is the
+     * server-relative form and stays public for that reason.
+     */
+    @Override public String rowImageUrl() {
+        return posterPath();
     }
 
     /**

@@ -150,6 +150,9 @@
          dock when the Plex tile is focused. -->
     <include layout="@layout/row_continue_watching" />
 
+    <!-- The Spotify recently-played shelf (spotify_row): the same slot, shown for the Spotify tile. -->
+    <include layout="@layout/row_spotify" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"

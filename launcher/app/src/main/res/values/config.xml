@@ -121,6 +121,21 @@
     <!-- How many on-deck items the row shows at most. -->
     <integer name="continue_watching_max">8</integer>
 
+    <!-- The Spotify row: while the Spotify tile is focused, the account's recently-played list appears
+         above the dock, each item artwork with the track or show name. Separate from continue_watching
+         because the two need different credentials and either can be wanted without the other. Off by
+         default, since it needs a Spotify app registration and a one-time login; see docs/spotify.md. -->
+    <bool name="spotify_row">false</bool>
+    <!-- The client id of the Spotify app you registered at developer.spotify.com. A client id is public
+         (it travels in the login URL), so unlike the tokens below it is safe in a theme. -->
+    <string name="spotify_client_id" translatable="false"></string>
+    <!-- The refresh token from the one-time PKCE login. This IS a credential: keep it in the gitignored
+         theme config.json, never here. Spotify expires it after 6 months, after which the login is
+         repeated; the app rewrites this key automatically when Spotify rotates the token. -->
+    <string name="spotify_refresh_token" translatable="false"></string>
+    <!-- How many recently-played items the row shows at most. Spotify's own ceiling is 50. -->
+    <integer name="spotify_row_max">8</integer>
+
     <!-- Show the Solar Hijri (Shamsi) date used in Iran and Afghanistan, e.g. "27 Mehr 1405", above the
          Gregorian date. -->
     <bool name="shamsi_date">false</bool>
