@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One Continue Watching item: a 16:9 still with the title under it and a progress bar across the
+  bottom of the artwork, the way Plex and Apple TV both draw an in-progress item.
+
+  The card is the focusable thing; the progress bar is a plain view whose width is set in code.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/cwCard"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:descendantFocusability="blocksDescendants">
+
+    <FrameLayout
+        android:layout_width="232dp"
+        android:layout_height="130dp">
+
+        <ImageView
+            android:id="@+id/cwArt"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:contentDescription="@null"
+            android:background="@drawable/cw_art_placeholder" />
+
+        <!-- The rim the focused card draws; transparent until focused. -->
+        <View
+            android:id="@+id/cwRim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/cw_rim" />
+
+        <!-- Progress bar: a full-width track with a filled portion sized in code. -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_gravity="bottom">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#40FFFFFF" />
+
+            <View
+                android:id="@+id/cwProgress"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:background="#FFFFFFFF" />
+        </FrameLayout>
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/cwTitle"
+        android:layout_width="232dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:singleLine="true"
+        android:textColor="#E6FFFFFF"
+        android:textSize="14sp"
+        android:fontFamily="@font/outfit_light" />
+
+    <TextView
+        android:id="@+id/cwSubtitle"
+        android:layout_width="232dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:singleLine="true"
+        android:textColor="#8CFFFFFF"
+        android:textSize="12sp"
+        android:fontFamily="@font/outfit_light" />
+</LinearLayout>

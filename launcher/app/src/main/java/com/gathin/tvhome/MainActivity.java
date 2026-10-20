@@ -116,6 +116,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView heroName;
     /** The top shelf: heroName, plus the cinematic shelf's "Last opened" line and dock position dots. */
     private View hero;
+    /** The Plex on-deck shelf (continue_watching); null unless a theme configured Plex. */
+    private ContinueWatchingRow continueWatching;
+    private ContinueWatching continueWatchingData;
+    /** The dock position that owns the row: the Plex app's tile, resolved at load. */
+    private int continueWatchingPosition = -1;
     private TextView heroMeta;
     private LinearLayout heroDots;
     /** Cinematic top shelf (config.xml, cinematic_home): the focused dock app's artwork behind a larger shelf. */
@@ -335,8 +340,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         cinematic = cfg.cinematicHome;
         if (cinematic) setUpCinematicShelf();
         // dock_title false: the name above the dock (and the cinematic lines under it) never shows; the glow
-        // still follows the dock.
-        if (!cfg.dockTitle) hero.setVisibility(View.GONE);
+        // still follows the dock. The on-deck shelf must outlive this, so hide the name rather than the
+        // whole hero group when a theme turned Continue Watching on.
+        if (!cfg.dockTitle) {
+            if (cfg.continueWatching) heroName.setVisibility(View.GONE);
+            else hero.setVisibility(View.GONE);
+        }
+        setUpContinueWatching(cfg);
         greeting = findViewById(R.id.greeting);
         greetingColor = greeting.getCurrentTextColor();
         btnWifi = findViewById(R.id.btnWifi);
@@ -722,6 +732,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         adapter.reload(cards.isEmpty() ? none : CardFeature.run(() -> Cards.shown(cards), none));
         lastFocusedKey = returnKey;
         lastFocused = returnSlot;
+        resolveContinueWatchingPosition();
     }
 
     /**
@@ -784,6 +795,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onDestroy() {
         super.onDestroy();
         wallpaperPlayer.close();
+        if (continueWatchingData != null) continueWatchingData.shutdown();
+        if (continueWatching != null) continueWatching.shutdown();
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
         if (tim != null) tim.unregisterCallback(inputCallback);
@@ -1167,10 +1180,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 else grid.smoothScrollBy(0, dy);
             }
             showHero(position, scroll ? r.top - dy : r.top);
+            updateContinueWatching(position);
         } else {
             // A plain grid (dock_row false) has no dock to carry the glow, so it follows every tile there.
             if (dockRow) hideHero();
             else showGlowOnly(position);
+            updateContinueWatching(-1);
             // Scroll just enough so the whole glass (not only the tile) is visible.
             revealRect.set(0, -(int) pad * 2, item.getWidth(), item.getHeight() + (int) pad);
             grid.requestChildRectangleOnScreen(item, revealRect, reducedMotion);
@@ -1191,6 +1206,105 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (!glassShown || card.getWidth() != glassCardW || glass.getWidth() != w || glass.getHeight() != h) {
             onTileFocused(pos, card);
         }
+    }
+
+    // ---- continue watching -------------------------------------------------------------------------
+
+    /**
+     * Sets up the Plex on-deck shelf when a theme asked for it (continue_watching plus a plex_url).
+     * Nothing is fetched here: the row loads when the Plex tile first takes focus, so a configured but
+     * unreachable server costs Home nothing at startup.
+     */
+    private void setUpContinueWatching(Config cfg) {
+        if (!cfg.continueWatching) return;
+        View host = findViewById(R.id.continueWatching);
+        if (host == null) return;
+        continueWatchingData = new ContinueWatching(this, cfg.plexUrl, cfg.plexToken, cfg.continueWatchingMax);
+        continueWatchingData.primeFromCache();
+        PlexClient client = new PlexClient(cfg.plexUrl, cfg.plexToken);
+        continueWatching = new ContinueWatchingRow(this, host, client);
+        continueWatching.setServer(cfg.plexUrl, cfg.plexToken);
+        continueWatching.setListener(new ContinueWatchingRow.Listener() {
+            @Override public void onItemFocused(PlexItem item, View card) {
+                hideHeroName();                               // the shelf replaces the app name
+            }
+
+            @Override public void onDownFromRow() {
+                // Back to the dock, on the tile that owns the shelf.
+                if (continueWatchingPosition >= 0) focusTile(continueWatchingPosition);
+            }
+
+            @Override public void onItemClicked(PlexItem item) {
+                open(PlexPage.itemIntent(MainActivity.this, cfg.plexUrl, cfg.plexToken, item));
+            }
+        });
+        continueWatching.setItems(continueWatchingData.current());
+    }
+
+    /**
+     * Shows or hides the shelf for the tile at {@code position}. Only the Plex tile has one, so every
+     * other tile focus takes the row away again.
+     */
+    private void updateContinueWatching(int position) {
+        if (continueWatching == null) return;
+        if (position != continueWatchingPosition) {
+            continueWatching.setItems(java.util.Collections.emptyList());
+            return;
+        }
+        // Show what we have at once (cache on a cold start), then refresh in the background.
+        continueWatching.setItems(continueWatchingData.current());
+        positionContinueWatching();
+        // Load once on first sight of the shelf; refreshIfStale throttles later visits.
+        continueWatchingData.load(items -> {
+            if (continueWatching == null) return;
+            if (lastFocused == continueWatchingPosition) {
+                continueWatching.setItems(items);
+                positionContinueWatching();
+            }
+        });
+    }
+
+    /**
+     * Places the shelf just above the dock, where {@link #showHero} puts the app name. The row is a
+     * sibling of the hero in the root frame, so it is positioned rather than laid out.
+     */
+    private void positionContinueWatching() {
+        if (continueWatching == null || !continueWatching.hasItems()) return;
+        View row = continueWatching.view();
+        int pos = Math.max(0, Math.min(continueWatchingPosition, adapter.getItemCount() - 1));
+        RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(pos);
+        if (vh == null) return;
+        View tile = vh.itemView;
+        float dockTop = tile.getTop() - grid.getPaddingTop() + grid.getTop();
+        float y = dockTop - 14 * density - row.getHeight() - 8 * density;
+        row.setY(Math.max(0f, y));
+    }
+
+    /**
+     * Finds the dock tile that owns the shelf: the Plex package from the theme's plex_app (defaulting
+     * to the Plex for Android one). -1 when Plex is not in the dock, which leaves the row unused.
+     */
+    private void resolveContinueWatchingPosition() {
+        if (continueWatching == null || adapter == null) return;
+        String pkg = continueWatchingPackage;
+        for (int i = 0; i < Math.min(COLUMNS, adapter.getItemCount()); i++) {
+            if (pkg.equals(adapter.packageAt(i))) {
+                continueWatchingPosition = i;
+                return;
+            }
+        }
+        continueWatchingPosition = -1;
+    }
+
+    private String continueWatchingPackage = ContinueWatchingDefaults.PLEX_PACKAGE;
+
+    /** Hides the big app name so the on-deck shelf owns the shelf area. */
+    private void hideHeroName() {
+        heroName.setAlpha(0f);
+    }
+
+    private void restoreHeroName() {
+        heroName.setAlpha(1f);
     }
 
     // ---- top shelf -------------------------------------------------------------------------------
@@ -1258,6 +1372,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** The shelf's text for this dock app: its name and, on the cinematic shelf, "Last opened" and the dots. */
     private void fillHero(int position, String label) {
         heroName.setText(label);
+        // The on-deck shelf hides the name while it is up; a move to another tile brings it back.
+        boolean shelfUp = continueWatching != null && continueWatching.hasItems()
+                && position == continueWatchingPosition;
+        heroName.setAlpha(shelfUp ? 0f : 1f);
         if (!cinematic) return;
         updateHeroMeta(position);
         updateHeroDots(position);
@@ -1472,6 +1590,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void hideHero() {
+        if (continueWatching != null) {
+            continueWatching.setItems(java.util.Collections.emptyList());
+        }
         if (!heroShown) return;
         stopAmbientAnimation();
         hero.animate().cancel();
@@ -1696,7 +1817,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     rtlAppGrid, keyCode == KeyEvent.KEYCODE_DPAD_LEFT);
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            if (position < COLUMNS) return false;          // dock row: let focus move to the top bar
+            // The Plex tile has the on-deck shelf above it: Up enters the shelf instead of the top bar.
+            if (position < COLUMNS) {
+                if (position == continueWatchingPosition && continueWatching != null
+                        && continueWatching.hasItems() && continueWatching.focusFirst()) {
+                    grid.playSoundEffect(SoundEffectConstants.NAVIGATION_UP);
+                    return true;
+                }
+                return false;                              // dock row: let focus move to the top bar
+            }
             target = position - COLUMNS;
         } else {
             int lastRowStart = ((count - 1) / COLUMNS) * COLUMNS;
@@ -1717,6 +1846,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         libraryFocusPending = false;
         hideGlass();
         hideHero();
+        restoreHeroName();
     }
 
     /** The leftmost pill on screen: Bluetooth when a theme shows it, else Inputs, else the network pill. */

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Continue Watching row: one horizontally scrolling strip of Plex on-deck items, shown in the
+  hero slot above the dock while the Plex tile is focused.
+
+  Focusable as a whole so a D-pad Up from the dock can land in it; the card itself takes focus.
+-->
+<HorizontalScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/continueWatching"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="68dp"
+    android:layout_marginEnd="68dp"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:focusable="false"
+    android:scrollbars="none"
+    android:visibility="gone">
+
+    <LinearLayout
+        android:id="@+id/continueWatchingItems"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:orientation="horizontal" />
+</HorizontalScrollView>

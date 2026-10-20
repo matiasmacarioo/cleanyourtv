@@ -146,6 +146,10 @@
             android:visibility="gone" />
     </LinearLayout>
 
+    <!-- The Plex on-deck shelf (continue_watching): a sibling of the hero, positioned in code above the
+         dock when the Plex tile is focused. -->
+    <include layout="@layout/row_continue_watching" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
