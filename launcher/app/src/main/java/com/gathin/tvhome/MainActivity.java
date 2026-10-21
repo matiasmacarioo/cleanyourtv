@@ -1364,6 +1364,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /**
      * Places the active shelf just above the dock, where {@link #showHero} puts the app name. The row
      * is a sibling of the hero in the root frame, so it is positioned rather than laid out.
+     *
+     * <p>Anchored by its <em>bottom</em> to the dock and then clamped below the pill bar, and both
+     * halves matter. The row is taller than the name box it replaces, so placing it by a fixed offset
+     * from the dock pushes its top off the screen and through the pills. Anchoring the bottom keeps the
+     * cards on the dock whatever the card shape, and the clamp is what actually holds the top clear of
+     * the pills: without it a tall row is simply taller than the space and rides up underneath them.
      */
     private void positionShelf() {
         HeroRow shelf = activeShelf;
@@ -1374,8 +1380,30 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (vh == null) return;
         View tile = vh.itemView;
         float dockTop = tile.getTop() - grid.getPaddingTop() + grid.getTop();
-        float y = dockTop - 14 * density - row.getHeight() - 8 * density;
-        row.setY(Math.max(0f, y));
+        // Bottom sits just above the dock.
+        float y = dockTop - 14 * density - row.getHeight();
+        // ...unless that would put the top under the pills, which is the case on a 1080p screen where
+        // the row is close to half the height. Then the pills win and the row loses its margin instead.
+        row.setY(Math.max(pillBarBottom() + 12 * density, y));
+    }
+
+    /**
+     * The bottom edge of the top bar (the tallest pill), in root coordinates. Used to keep a shelf from
+     * overlapping it. Falls back to a sane inset when the bar has not been laid out yet, so a shelf
+     * placed before the first layout still comes out clear of where the pills will be.
+     */
+    private float pillBarBottom() {
+        View bar = findViewById(R.id.topButtons);
+        if (bar != null && bar.getHeight() > 0) {
+            int[] loc = new int[2];
+            bar.getLocationInWindow(loc);
+            // getLocationInWindow counts from the window, which includes the status bar; the root
+            // frame does not, so the bar's own top has to be rebased onto root coordinates.
+            int[] rootLoc = new int[2];
+            root.getLocationInWindow(rootLoc);
+            return loc[1] - rootLoc[1] + bar.getHeight();
+        }
+        return 26 * density + 84 * density;   // the bar's top padding plus a pill's height
     }
 
     /** True when the shelf for the dock tile at {@code position} is up and has something to focus. */
