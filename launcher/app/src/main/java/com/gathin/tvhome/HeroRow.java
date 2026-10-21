@@ -55,6 +55,9 @@ final class HeroRow {
         /** D-pad Down from the row: back to the dock. */
         void onDownFromRow();
 
+        /** D-pad Up from the row: out of the shelf and into the top bar. */
+        void onUpFromRow();
+
         /** A card was clicked: open that item in its app. */
         void onItemClicked(RowItem item);
     }
@@ -161,13 +164,18 @@ final class HeroRow {
         });
         card.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
-            // Down leaves the shelf for the dock; Left/Right move between cards and are handled by
-            // the parent's focus search, which is what makes the strip feel like one row.
+            // Up and Down leave the shelf: Down to the dock, Up out to the top bar. Both are handled
+            // here rather than left to the focus search, which would otherwise pick whichever view
+            // happens to be nearest and make leaving the row feel arbitrary.
             if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
                 if (listener != null) listener.onDownFromRow();
                 return true;
             }
-            return false;
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP) {
+                if (listener != null) listener.onUpFromRow();
+                return true;
+            }
+            return false;   // Left/Right move between cards via the parent's focus search
         });
         return card;
     }

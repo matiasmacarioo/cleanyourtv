@@ -4,40 +4,31 @@ import android.content.Context;
 import android.content.Intent;
 
 /**
- * The Intent that opens an on-deck item in Plex.
+ * The Intent that opens Plex.
  *
- * <p>Plex for Android registers a bare {@code plex:} scheme on {@code tv.plex.app.MainActivity} — the
- * manifest declares the scheme with no authority and no path pattern, so it parses the URI itself and
- * the shape of anything beyond {@code plex:} is Plex's own business, not something this launcher can
- * verify. Rather than invent a path it cannot test, {@link #itemIntent} sends the item the way Plex
- * exposes in its own public API: the {@code /web/index.html#!/server/<id>/details?key=<key>} address
- * route, which every Plex client understands.
+ * <p>It deliberately opens the app rather than an item. Plex for Android has no link shape this
+ * launcher can use to open one:
  *
- * <p>What that buys is a click that always lands somewhere useful. Plex owns the decision of where in
- * a file to resume; the launcher only says which item.
+ * <ul>
+ *   <li>Its {@code plex:} filter declares only the scheme, no authority and no path, and the shapes
+ *       its own code looks for are {@code plex://watch/video?uri=...} and
+ *       {@code plex://<serverId>/<type>/<key>}. Both reach Plex but land on its home screen instead
+ *       of playing, so they look like they worked and did not.</li>
+ *   <li>Its {@code http}/{@code https} filters list exactly {@code watch.plex.tv},
+ *       {@code plex.smart.link}, {@code l.plex.tv}, {@code links.plex.tv} and {@code click.plex.tv}.
+ *       {@code app.plex.tv}, the address Plex's own web app is served from, is not among them — and
+ *       is not even owned by Plex here: on this TV it resolved to an unrelated downloader app.</li>
+ * </ul>
+ *
+ * <p>So a card click opens Plex itself. That is a smaller promise than "resume this episode", but it
+ * is one the app actually keeps, and the deck is already on the row above for choosing what to play.
  */
 final class PlexPage {
     private PlexPage() {}
 
     /**
-     * Opens {@code item} in Plex. The {@code https://app.plex.tv/...} address form is used because it
-     * is the one URL shape Plex documents for linking to an item, and the installed app claims both
-     * {@code http} and {@code https} for {@code app.plex.tv} and {@code click.plex.tv}.
-     */
-    static Intent itemIntent(Context ctx, String serverBase, String token, PlexItem item) {
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setPackage(ContinueWatchingDefaults.PLEX_PACKAGE);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        // Plex's own "open this item" link: the server-scoped details route, keyed by the item.
-        intent.setData(android.net.Uri.parse(
-                "https://app.plex.tv/desktop#!/server/server/details?key="
-                        + android.net.Uri.encode(item.key)));
-        return intent;
-    }
-
-    /**
-     * The app's own start screen, used when a deep link cannot be routed (an older Plex, or a click on
-     * a card whose item has since left the server). A click must never be a no-op.
+     * Opens the Plex app's own front screen. Null when Plex is not installed, which the caller treats
+     * as a no-op rather than crashing on a card for an app that has been removed.
      */
     static Intent launchIntent(Context ctx) {
         Intent launch = ctx.getPackageManager()

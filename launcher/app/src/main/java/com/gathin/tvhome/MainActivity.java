@@ -1251,10 +1251,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (continueWatchingPosition >= 0) focusTile(continueWatchingPosition);
             }
 
+            @Override public void onUpFromRow() {
+                focusTopBar();
+            }
+
             @Override public void onItemClicked(RowItem item) {
-                if (item instanceof PlexItem) {
-                    open(PlexPage.itemIntent(MainActivity.this, url, token, (PlexItem) item));
-                }
+                // Plex's TV app has no link shape that opens a given item: its own plex://watch and
+                // plex://<serverId>/<type>/<key> forms both drop onto the app's home screen, and the
+                // https form this used to send matched a downloader app rather than Plex. So a click
+                // opens the app itself - which is honest about what it can do - rather than a link
+                // that half-works.
+                open(PlexPage.launchIntent(MainActivity.this));
             }
         });
         continueWatching.setItems(continueWatchingData.current());
@@ -1284,6 +1291,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
             @Override public void onDownFromRow() {
                 if (spotifyPosition >= 0) focusTile(spotifyPosition);
+            }
+
+            @Override public void onUpFromRow() {
+                focusTopBar();
             }
 
             @Override public void onItemClicked(RowItem item) {
@@ -1993,6 +2004,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView firstPill() {
         if (bluetoothPill && btnBluetooth.getVisibility() == View.VISIBLE) return btnBluetooth;
         return btnInputs.getVisibility() == View.VISIBLE ? (TextView) btnInputs : btnWifi;
+    }
+
+    /**
+     * Leaves a shelf upwards, landing on the first pill. Used for D-pad Up from a row: the shelf sits
+     * between the pills and the dock, so up is "out of the shelf" and the top bar is where that leads.
+     */
+    private void focusTopBar() {
+        firstPill().requestFocus();
+        grid.playSoundEffect(SoundEffectConstants.NAVIGATION_UP);
     }
 
     @Override public void onLibraryUp() {
