@@ -2512,6 +2512,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     /** Dropdown menu under the Inputs pill: HDMI ports (with connection state), AV and Live TV. */
+    /**
+     * Sort key for an input row: 0 for a connected HDMI port, 1 for an HDMI port with nothing on it,
+     * 2 for everything else (AV, component, and the rest). Lower sorts first.
+     *
+     * <p>Kept as a separate method rather than inline in the comparator so the ranking is one thing to
+     * read and one thing to test.
+     */
+    private static int inputRank(TvInputInfo info, Map<String, Boolean> connected, boolean hdmiStateBogus) {
+        if (info.getType() != TvInputInfo.TYPE_HDMI) return 2;
+        // A CEC device reports as HDMI type too, but it is drawn on its port's row, so it never reaches
+        // the list; ranking it with its port anyway keeps the order stable if that ever changes.
+        if (hdmiStateBogus) return 1;
+        Boolean on = connected.get(info.getId());
+        return on != null && on ? 0 : 1;
+    }
+
     private void showInputs() {
         // A configured source panel and no Live TV row to offer next to it: the panel is the whole menu.
         // The BYINTEK U4 needs this, as its TvInputManager lists three HDMI ports and an AV input it doesn't have.
@@ -2534,12 +2550,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean tunerIsAnalog = false;
         if (tim != null) {
             List<TvInputInfo> inputs = new ArrayList<>(tim.getTvInputList());
-            // HDMI ports first in port order, then AV and the rest.
-            Collections.sort(inputs, (a, b) -> {
-                boolean ha = a.getType() == TvInputInfo.TYPE_HDMI, hb = b.getType() == TvInputInfo.TYPE_HDMI;
-                if (ha != hb) return ha ? -1 : 1;
-                return String.valueOf(a.loadLabel(this)).compareToIgnoreCase(String.valueOf(b.loadLabel(this)));
-            });
             // An HDMI-CEC device (an Apple TV, a soundbar) gets an input of its own whose parent is the
             // port it sits on, so the port and the device would each get a row (Vestel MT7332: "HDMI 1"
             // and "HDMI Apple TV"). The device takes its port's row instead, and a bare port is listed
@@ -2557,6 +2567,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
             // Some TVs (Sony) report every HDMI port as connected whether or not anything is plugged in,
             // so drop the HDMI status then. A TV with every port really in use loses it too.
+            // Worked out before the sort because the sort orders by that state.
             int hdmiPorts = 0, hdmiConnected = 0;
             for (TvInputInfo info : inputs) {
                 if (!info.isPassthroughInput() || info.getType() != TvInputInfo.TYPE_HDMI) continue;
@@ -2565,6 +2576,35 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (tim.getInputState(info.getId()) == TvInputManager.INPUT_STATE_CONNECTED) hdmiConnected++;
             }
             boolean hdmiStateBogus = hdmiPorts > 1 && hdmiConnected == hdmiPorts;
+            // A port with something plugged into it is wanted far more often than an empty one, and an
+            // empty port on a TV with several is the common case: the row someone wants should not be
+            // behind two dead HDMI sockets. So: connected HDMI first, then the remaining HDMI, then the
+            // rest (AV, component), each group alphabetical.
+            //
+            // Connected means either the port itself is connected or a CEC device sits on it - the device
+            // is what is actually plugged in, and it reports its own state (an Apple TV sleeping on
+            // HDMI 2 still leaves the port itself reporting disconnected on some sets).
+            Map<String, Boolean> connected = new HashMap<>();
+            for (TvInputInfo info : inputs) {
+                boolean on = hdmiStateBogus ? false
+                        : tim.getInputState(info.getId()) == TvInputManager.INPUT_STATE_CONNECTED;
+                List<TvInputInfo> devices = cecDevices.get(info.getId());
+                if (!on && devices != null) {
+                    for (TvInputInfo device : devices) {
+                        if (tim.getInputState(device.getId()) == TvInputManager.INPUT_STATE_CONNECTED) {
+                            on = true;
+                            break;
+                        }
+                    }
+                }
+                connected.put(info.getId(), on);
+            }
+            Collections.sort(inputs, (a, b) -> {
+                int ra = inputRank(a, connected, hdmiStateBogus);
+                int rb = inputRank(b, connected, hdmiStateBogus);
+                if (ra != rb) return ra < rb ? -1 : 1;
+                return String.valueOf(a.loadLabel(this)).compareToIgnoreCase(String.valueOf(b.loadLabel(this)));
+            });
             for (TvInputInfo info : inputs) {
                 if (info.getType() == TvInputInfo.TYPE_TUNER
                         && (info.getServiceInfo().applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0) {
