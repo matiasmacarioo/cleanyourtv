@@ -17,6 +17,11 @@
     android:scrollbars="none"
     android:visibility="gone">
 
+    <!--
+      The strip itself carries no padding: each card adds its own margin (see HeroRow.buildCard), which
+      is where a focused card's growth comes from, and that keeps the first card's artwork aligned with
+      the row's margin without any offset here.
+    -->
     <LinearLayout
         android:id="@+id/continueWatchingItems"
         android:layout_width="wrap_content"

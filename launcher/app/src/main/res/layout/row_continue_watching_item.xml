@@ -7,15 +7,21 @@
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/cwCard"
-    android:layout_width="wrap_content"
+    android:layout_width="232dp"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:focusable="true"
     android:focusableInTouchMode="true"
     android:descendantFocusability="blocksDescendants">
 
+    <!--
+      The card's width is the artwork's width, and every child is match_parent inside it. That pairing
+      is what makes a long title ellipsize: with the widths fixed, the TextViews are clipped to 232dp,
+      whereas a wrap_content card measures to its widest child and a long title widened the card - one
+      title 220px too long pushed every card after it out of line.
+    -->
     <FrameLayout
-        android:layout_width="232dp"
+        android:layout_width="match_parent"
         android:layout_height="130dp">
 
         <ImageView
@@ -54,7 +60,7 @@
 
     <TextView
         android:id="@+id/cwTitle"
-        android:layout_width="232dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:ellipsize="end"
@@ -66,7 +72,7 @@
 
     <TextView
         android:id="@+id/cwSubtitle"
-        android:layout_width="232dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:ellipsize="end"

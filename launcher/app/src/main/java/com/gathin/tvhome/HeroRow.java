@@ -37,9 +37,18 @@ import java.util.concurrent.Executors;
  * yet simply shows the placeholder, which is why artwork arriving late never reflows the row.
  */
 final class HeroRow {
-    /** The card's size, matching row_continue_watching_item.xml. */
+    /** The card's artwork size, matching row_continue_watching_item.xml. */
     private static final int ART_WIDTH_DP = 232;
     private static final int ART_HEIGHT_DP = 130;
+    /** The card is exactly as wide as its artwork; the focus gap is a margin, not part of the card. */
+    private static final int CARD_WIDTH_DP = ART_WIDTH_DP;
+    /**
+     * How much the focused card grows. The card keeps 12dp of padding on each side beyond its artwork
+     * (row_continue_watching_item.xml), and 1.08 needs 10.2dp of that, so it fits with room to spare.
+     * Raising this without widening that padding is exactly what caused the overlap - the growth has
+     * to come out of space the card already reserved, not out of a neighbour.
+     */
+    private static final float FOCUS_SCALE = 1.08f;
     /** Fetched at 2x and downscaled on a TV, whose density makes 1x look soft. */
     private static final int FETCH_SCALE = 2;
 
@@ -126,6 +135,16 @@ final class HeroRow {
 
     private View buildCard(LayoutInflater inflater, RowItem item) {
         View card = inflater.inflate(R.layout.row_continue_watching_item, items, false);
+        // Width is pinned here rather than left to the layout: the title is match_parent inside the
+        // card, so a card that measures to its children would size itself to the longest title and shove
+        // every card after it along. A fixed width is what clips a long title to an ellipsis instead.
+        LinearLayout.LayoutParams cardParams =
+                new LinearLayout.LayoutParams(cardWidthPx(), ViewGroup.LayoutParams.WRAP_CONTENT);
+        int growth = Math.round(cardWidthPx() * (FOCUS_SCALE - 1f));
+        int margin = growth / 2 + Math.round(2 * density);
+        cardParams.setMarginStart(margin);
+        cardParams.setMarginEnd(margin);
+        card.setLayoutParams(cardParams);
         TextView title = card.findViewById(R.id.cwTitle);
         TextView subtitle = card.findViewById(R.id.cwSubtitle);
         title.setText(item.rowTitle());
@@ -155,8 +174,15 @@ final class HeroRow {
             rim.animate().cancel();
             rim.animate().alpha(focused ? 1f : 0f).setDuration(120).start();
             v.animate().cancel();
-            float scale = focused ? 1.06f : 1f;
-            v.animate().scaleX(scale).scaleY(scale).setDuration(140).start();
+            // Grows into the padding the card and strip keep around it rather than over a neighbour -
+            // see row_continue_watching_item.xml for why that space exists. Elevation carries the
+            // sense of the card lifting; without it a scaled card just looks like a wider one.
+            float scale = focused ? FOCUS_SCALE : 1f;
+            v.animate()
+                    .scaleX(scale).scaleY(scale)
+                    .translationZ((focused ? 1f : 0f) * 8 * density)
+                    .setDuration(140)
+                    .start();
             if (focused && listener != null) listener.onItemFocused(item, v);
         });
         card.setOnClickListener(v -> {
@@ -216,6 +242,11 @@ final class HeroRow {
         synchronized (artCache) {
             artCache.clear();
         }
+    }
+
+    /** The card's full laid-out width, which is what {@link #FOCUS_SCALE} grows it from. */
+    private int cardWidthPx() {
+        return Math.round(CARD_WIDTH_DP * density);
     }
 
     /** The pixel size the row asks for, so a loader can request a sensibly-sized image. */
