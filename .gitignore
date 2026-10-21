@@ -9,6 +9,14 @@ launcher/local.properties
 backup/
 .DS_Store
 
+# Credentials. The Spotify refresh token and the PKCE verifier are secrets: they belong on the TV
+# and in a local scratch file, never in the repository. The theme's config.json holds the same
+# token, and is covered by backup/ above.
+.spotify-token.json
+.spotify-pkce-verifier
+spotify_token.json
+*.spotify-token.json
+
 # Generated install bundles and JVM crash reports stay out of contributions.
 *.apk
 *.aab
