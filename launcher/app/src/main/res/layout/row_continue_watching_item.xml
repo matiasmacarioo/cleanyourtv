@@ -21,6 +21,7 @@
       title 220px too long pushed every card after it out of line.
     -->
     <FrameLayout
+        android:id="@+id/cwArtFrame"
         android:layout_width="match_parent"
         android:layout_height="130dp">
 
@@ -75,6 +76,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
+        android:layout_marginBottom="4dp"
         android:ellipsize="end"
         android:maxLines="1"
         android:singleLine="true"

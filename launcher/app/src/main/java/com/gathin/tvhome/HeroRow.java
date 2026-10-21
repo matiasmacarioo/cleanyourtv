@@ -42,13 +42,16 @@ final class HeroRow {
     private static final int ART_HEIGHT_DP = 130;
     /** The card is exactly as wide as its artwork; the focus gap is a margin, not part of the card. */
     private static final int CARD_WIDTH_DP = ART_WIDTH_DP;
+    /** Matches the radius on cw_rim and cw_art_placeholder, so the poster and its rim agree. */
+    private static final float CORNER_RADIUS_DP = 10f;
+    /** Space between two cards, split into a margin on each. */
+    private static final int CARD_GAP_DP = 24;
     /**
-     * How much the focused card grows. The card keeps 12dp of padding on each side beyond its artwork
-     * (row_continue_watching_item.xml), and 1.08 needs 10.2dp of that, so it fits with room to spare.
-     * Raising this without widening that padding is exactly what caused the overlap - the growth has
-     * to come out of space the card already reserved, not out of a neighbour.
+     * How much the focused card grows. Off by design: the card is as wide as its artwork, so a scaled
+     * card grows past its own bounds and clips the poster's rounded edge. The rim and the lift mark
+     * focus instead.
      */
-    private static final float FOCUS_SCALE = 1.08f;
+    private static final float FOCUS_SCALE = 1f;
     /** Fetched at 2x and downscaled on a TV, whose density makes 1x look soft. */
     private static final int FETCH_SCALE = 2;
 
@@ -140,10 +143,11 @@ final class HeroRow {
         // every card after it along. A fixed width is what clips a long title to an ellipsis instead.
         LinearLayout.LayoutParams cardParams =
                 new LinearLayout.LayoutParams(cardWidthPx(), ViewGroup.LayoutParams.WRAP_CONTENT);
-        int growth = Math.round(cardWidthPx() * (FOCUS_SCALE - 1f));
-        int margin = growth / 2 + Math.round(2 * density);
-        cardParams.setMarginStart(margin);
-        cardParams.setMarginEnd(margin);
+        // A plain gap. It used to be half the focus growth, so a scaled card had somewhere to grow;
+        // with the scale off (FOCUS_SCALE) that space is no longer needed and the cards sit closer.
+        int gap = Math.round(CARD_GAP_DP * density);
+        cardParams.setMarginStart(gap / 2);
+        cardParams.setMarginEnd(gap / 2);
         card.setLayoutParams(cardParams);
         TextView title = card.findViewById(R.id.cwTitle);
         TextView subtitle = card.findViewById(R.id.cwSubtitle);
@@ -165,6 +169,20 @@ final class HeroRow {
             });
         }
 
+        // Rounds the poster. The clip is on the frame, not the ImageView: a shape background only paints
+        // behind the bitmap and the poster covers it, so the corners stayed square. This is the same
+        // approach AppAdapter uses for app icons.
+        View artFrame = card.findViewById(R.id.cwArtFrame);
+        if (artFrame != null) {
+            artFrame.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override
+                public void getOutline(View view, android.graphics.Outline outline) {
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), CORNER_RADIUS_DP * density);
+                }
+            });
+            artFrame.setClipToOutline(true);
+        }
+
         ImageView art = card.findViewById(R.id.cwArt);
         loadArt(item.rowImageUrl(), art);
 
@@ -174,12 +192,9 @@ final class HeroRow {
             rim.animate().cancel();
             rim.animate().alpha(focused ? 1f : 0f).setDuration(120).start();
             v.animate().cancel();
-            // Grows into the padding the card and strip keep around it rather than over a neighbour -
-            // see row_continue_watching_item.xml for why that space exists. Elevation carries the
-            // sense of the card lifting; without it a scaled card just looks like a wider one.
-            float scale = focused ? FOCUS_SCALE : 1f;
+            // No scale - FOCUS_SCALE explains why. The lift is what gives the focused card a sense of
+            // coming forward, which a flat card would otherwise have nothing of.
             v.animate()
-                    .scaleX(scale).scaleY(scale)
                     .translationZ((focused ? 1f : 0f) * 8 * density)
                     .setDuration(140)
                     .start();

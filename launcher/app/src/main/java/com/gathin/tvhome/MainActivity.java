@@ -101,6 +101,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean rtlAppGrid;
     private static final long MINUTE_MS = 60_000L;
     private static final long STATS_MS = 10_000L;
+    /** Clearance between a shelf's bottom and the dock. Small: the titles hang below the artwork. */
+    private static final int SHELF_DOCK_GAP_DP = 8;
+    /** Minimum clearance between the pill bar and the top of a shelf. */
+    private static final int SHELF_PILL_GAP_DP = 10;
     private String liveTvPkg;
     private String liveTvAction;
     private String inputAction;
@@ -1378,9 +1382,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      *
      * <p>Anchored by its <em>bottom</em> to the dock and then clamped below the pill bar, and both
      * halves matter. The row is taller than the name box it replaces, so placing it by a fixed offset
-     * from the dock pushes its top off the screen and through the pills. Anchoring the bottom keeps the
-     * cards on the dock whatever the card shape, and the clamp is what actually holds the top clear of
-     * the pills: without it a tall row is simply taller than the space and rides up underneath them.
+     * from the dock pushes its top off the screen and through the pills. Centring keeps the cards clear
+     * of both, and the clamp is what actually holds the top clear of the pills: without it a row taller
+     * than the space simply rides up underneath them.
      */
     private void positionShelf() {
         HeroRow shelf = activeShelf;
@@ -1390,12 +1394,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(pos);
         if (vh == null) return;
         View tile = vh.itemView;
-        float dockTop = tile.getTop() - grid.getPaddingTop() + grid.getTop();
-        // Bottom sits just above the dock.
-        float y = dockTop - 14 * density - row.getHeight();
-        // ...unless that would put the top under the pills, which is the case on a 1080p screen where
-        // the row is close to half the height. Then the pills win and the row loses its margin instead.
-        row.setY(Math.max(pillBarBottom() + 12 * density, y));
+        // Both edges in window coordinates. The earlier version mixed coordinate spaces - itemView's
+        // getTop() is relative to the RecyclerView's content, which excludes its padding, so adding
+        // grid.getTop() and subtracting the padding did not cancel out and produced a dock top of 12px
+        // instead of 720. getLocationInWindow on both views puts them in the same space.
+        int[] tileLoc = new int[2];
+        tile.getLocationInWindow(tileLoc);
+        int[] rootLoc = new int[2];
+        root.getLocationInWindow(rootLoc);
+        float dockTop = tileLoc[1] - rootLoc[1];
+        float pills = pillBarBottom();
+        // Centred between the pill bar and the dock rather than pushed up against either. Bottom-anchored
+        // to the dock left a visibly larger gap above it than below, which is what made the row read as
+        // sitting too low.
+        float top = pills + SHELF_PILL_GAP_DP * density;
+        float bottom = dockTop - SHELF_DOCK_GAP_DP * density;
+        float y = top + (bottom - top - row.getHeight()) / 2f;
+        row.setY(Math.max(top, y));
     }
 
     /**
