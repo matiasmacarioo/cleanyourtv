@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://cleanyour.tv"><img src="https://raw.githubusercontent.com/Gathin23/cleanyourtv/main/docs/banner.png" alt="CleanYourTV. Your TV, minus the ads." width="800"></a>
+  <a href="https://cleanyour.tv"><img src="https://raw.githubusercontent.com/Gathin23/cleanyourtv/main/docs/banner.png" alt="CleanYourTV. Your TV, minus the ads. Strip the bloatware from any Android TV or Google TV over Wi-Fi and replace the ad-filled home screen with a clean launcher that looks like an Apple TV. No root, no cable, nothing uninstalled, and a one-line restore." width="800"></a>
 </p>
 
 <p align="center">
@@ -7,55 +7,14 @@
   <a href="https://github.com/Gathin23/cleanyourtv/pulls?q=is%3Amerged"><img src="https://img.shields.io/github/issues-pr-closed/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&label=merged%20PRs&color=cfffcf&labelColor=15181e" alt="Merged PRs"></a>
   <a href="https://github.com/Gathin23/cleanyourtv/network/members"><img src="https://img.shields.io/github/forks/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&color=cfffcf&labelColor=15181e" alt="Forks"></a>
   <a href="https://github.com/Gathin23/cleanyourtv/graphs/contributors"><img src="https://img.shields.io/github/contributors/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&color=cfffcf&labelColor=15181e" alt="Contributors"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-cfffcf?style=flat&labelColor=15181e" alt="MIT"></a>
+  <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/README-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-cfffcf?style=flat&labelColor=15181e" alt="简体中文"></a>
   <a href="https://buymeacoffee.com/gathint"><img src="https://img.shields.io/badge/support-%E2%9D%A4-ff5e8a?style=flat&labelColor=15181e" alt="Support, buy me a coffee"></a>
   <a href="https://www.producthunt.com/products/cleanyourtv"><img src="https://img.shields.io/badge/Product%20Hunt-launching%20Oct%2021-da552f?style=flat&logo=producthunt&logoColor=white&labelColor=15181e" alt="CleanYourTV on Product Hunt"></a>
 </p>
 
-<div align="center">
-<table>
-  <tr>
-    <td align="center"><h3>123</h3><sub>TV MODELS</sub></td>
-    <td align="center"><h3>42</h3><sub>BRANDS</sub></td>
-    <td align="center"><h3>19</h3><sub>LANGUAGES</sub></td>
-    <td align="center"><h3>390 KB</h3><sub>LAUNCHER</sub></td>
-  </tr>
-</table>
-</div>
-
 <p align="center">
-  <a href="https://cleanyour.tv">cleanyour.tv</a> ·
-  <a href="PROMPT.md">The prompt</a> ·
-  <a href="SHOWCASE.md">Showcase</a> ·
-  <a href="README.zh-CN.md">简体中文</a>
+  <a href="docs/PRESS.md"><img src="docs/card.jpg" alt="123 TV models · 42 brands · 19 languages · 390 KB launcher. Featured in TechCrunch, Mashable, Android Authority, XDA, FlatpanelsHD, It's FOSS, Phandroid, GIGAZINE, Xataka, WinFuture, Frandroid, Macitynet, Techaeris, TechPP, The Daily Star, detikINET and 54 more: 70 articles from 21 countries. Before: stock Google TV home with a sponsored ad. After: the Clean Your TV launcher." width="800"></a>
 </p>
-
-Strip the bloatware from any Android TV or Google TV over Wi-Fi, and replace the ad-filled home
-screen with a clean launcher that looks like an Apple TV. **No root, no cable, nothing uninstalled,
-and a one-line restore if you change your mind.**
-
-<p align="center">
-  <sub><b>FEATURED IN</b></sub><br><br>
-  <a href="https://techcrunch.com/2026/10/19/people-are-using-ai-to-make-their-smart-tvs-dumb-again/"><img src="docs/press/techcrunch.png" height="30" alt="TechCrunch"></a>&nbsp;&nbsp;
-  <a href="https://mashable.com/tech/smart-tv-ads-claude-code-ai-cleanup"><img src="docs/press/mashable.png" height="30" alt="Mashable"></a>&nbsp;&nbsp;
-  <a href="https://www.androidauthority.com/android-tv-vibe-hacking-remove-ads-bloatware-3725338/"><img src="docs/press/androidauthority.png" height="30" alt="Android Authority"></a>&nbsp;&nbsp;
-  <a href="https://www.xda-developers.com/people-are-now-vibe-coding-their-smart-tvs-to-strip-them-of-ads-and-unwanted-features/"><img src="docs/press/xda.png" height="30" alt="XDA"></a>&nbsp;&nbsp;
-  <a href="https://flatpanelshd.com/news.php?id=1792478262&amp;subaction=showfull"><img src="docs/press/flatpanelshd.png" height="30" alt="FlatpanelsHD"></a>&nbsp;&nbsp;
-  <a href="https://itsfoss.com/news/debloat-smart-tv/"><img src="docs/press/itsfoss.png" height="30" alt="It's FOSS"></a>&nbsp;&nbsp;
-  <a href="https://phandroid.com/2026/10/20/smart-tv-owners-are-using-ai-to-strip-the-ads-off-their-sets/"><img src="docs/press/phandroid.png" height="30" alt="Phandroid"></a>&nbsp;&nbsp;
-  <a href="https://gigazine.net/gsc_news/en/20261020-smart-tv-no-ads-tool/"><img src="docs/press/gigazine.png" height="30" alt="GIGAZINE"></a>&nbsp;&nbsp;
-  <a href="https://www.xataka.com/televisores/ultima-sensacion-viral-ia-eliminar-anuncios-bloatware-smart-tv-he-tontificado-mi-chromecast-maravilloso"><img src="docs/press/xataka.png" height="30" alt="Xataka"></a>&nbsp;&nbsp;
-  <a href="https://winfuture.de/news,162070.html"><img src="docs/press/winfuture.png" height="30" alt="WinFuture"></a>&nbsp;&nbsp;
-  <a href="https://www.frandroid.com/android/google-tv/3290159_google-tv-lent-et-envahi-par-les-pubs-le-projet-tv-vibehack-corrige-tout-ca-grace-a-lia-jai-tente-lexperience"><img src="docs/press/frandroid.png" height="30" alt="Frandroid"></a>&nbsp;&nbsp;
-  <a href="https://www.macitynet.it/rendere-le-tv-meno-smart/"><img src="docs/press/macitynet.png" height="30" alt="Macitynet"></a>&nbsp;&nbsp;
-  <a href="https://techaeris.com/2026/10/18/android-tv-debloat-tvos-style-makeover/"><img src="docs/press/techaeris.png" height="30" alt="Techaeris"></a>&nbsp;&nbsp;
-  <a href="https://techpp.com/2026/10/18/speed-up-android-tv-claude-code/"><img src="docs/press/techpp.png" height="30" alt="TechPP"></a>&nbsp;&nbsp;
-  <a href="https://www.thedailystar.net/news/technology/news/smart-tv-owners-are-using-ai-get-rid-ads-report-4303291"><img src="docs/press/thedailystar.png" height="30" alt="The Daily Star"></a>&nbsp;&nbsp;
-  <a href="https://inet.detik.com/consumer/d-8713172/kesal-tv-xiaomi-banyak-iklan-pria-ini-sulap-jadi-apple-tv-pakai-ai"><img src="docs/press/detikinet.png" height="30" alt="detikINET"></a><br>
-  <sub><a href="docs/PRESS.md">and 54 more &nbsp;·&nbsp; all 70 articles from 21 countries &rarr;</a></sub>
-</p>
-
-![Before: stock Google TV home with a sponsored ad. After: the Clean Your TV launcher](docs/stock-vs-new-side.jpg)
 
 > Vibe coded my parents' TV this afternoon! It was showing a sponsored ad before you could even get
 > to Netflix. Gave Claude Code the model number, it found the TV on wifi, removed 25 Xiaomi packages
@@ -73,6 +32,8 @@ developer options, allow your computer once, and the rest is standard Android to
 2. **Disable** the manufacturer's telemetry, ad services, content rows and preloaded junk with
    `pm disable-user`. Nothing is uninstalled, so a restore script can undo every step.
 3. **Install** a small native launcher and make it the default home screen.
+
+**No root, no cable, nothing uninstalled, and a one-line restore if you change your mind.**
 
 The bloat differs by brand, so the prompt has your coding assistant discover it on your TV and ask
 before touching anything you might use.
