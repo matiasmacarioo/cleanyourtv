@@ -62,6 +62,11 @@ final class SpotifyClient {
     /**
      * The recently-played list, or an empty list when anything goes wrong. Never throws: a Spotify
      * outage, an expired login and a bad network all end as "no row" rather than a broken Home.
+     *
+     * <p>{@link Throwable} rather than {@link Exception} is deliberate. A {@code NoSuchMethodError}
+     * from a method this only runs on Android 11 is an {@code Error}, not an {@code Exception}, so an
+     * {@code Exception} clause would let it through and kill the process on its background thread -
+     * taking Home down over an optional row.
      */
     java.util.List<SpotifyItem> recentlyPlayed(int limit) {
         if (!isConfigured()) return java.util.Collections.emptyList();
@@ -90,7 +95,7 @@ final class SpotifyClient {
             } finally {
                 c.disconnect();
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Log.w(TAG, "recently-played failed: " + e);
             return java.util.Collections.emptyList();
         }
@@ -164,7 +169,7 @@ final class SpotifyClient {
                 return false;
             }
             return applyTokenResponse(text);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Log.w(TAG, "Spotify token refresh failed: " + e);
             return false;
         }

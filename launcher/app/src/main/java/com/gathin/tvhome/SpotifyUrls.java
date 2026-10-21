@@ -1,7 +1,6 @@
 package com.gathin.tvhome;
 
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 
 /**
  * The Spotify endpoints the row uses, built as plain strings so a test can pin them down.
@@ -56,7 +55,21 @@ final class SpotifyUrls {
         return out;
     }
 
+    /**
+     * Percent-encodes a form value.
+     *
+     * <p>{@code URLEncoder.encode(String, Charset)} would be the obvious call, but it arrived in Java
+     * 10 and Android 11 does not have it: the app compiles against a newer SDK and then dies at the
+     * first Spotify fetch with {@code NoSuchMethodError}. The {@code String} charset overload is the
+     * one every Android release has, so it is the one used here.
+     */
+    @SuppressWarnings("CharsetObjectCanBeUsed")
     private static String encode(String s) {
-        return s == null ? "" : URLEncoder.encode(s, StandardCharsets.UTF_8);
+        if (s == null) return "";
+        try {
+            return URLEncoder.encode(s, "UTF-8");
+        } catch (java.io.UnsupportedEncodingException e) {
+            return s;   // UTF-8 is guaranteed present; this cannot happen
+        }
     }
 }

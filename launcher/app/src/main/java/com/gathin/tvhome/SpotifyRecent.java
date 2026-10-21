@@ -110,7 +110,9 @@ final class SpotifyRecent {
                     fetchedAt = System.currentTimeMillis();
                 }
                 persistRotatedToken();
-            } catch (Exception e) {
+            } catch (Throwable e) {
+                // Throwable, not Exception: an Error from a missing Android API on this device must
+                // still end as "empty row" rather than killing the process and taking Home with it.
                 Log.w(TAG, "recently-played load failed: " + e);
             } finally {
                 List<SpotifyItem> result = fresh;

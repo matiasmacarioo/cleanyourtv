@@ -26,6 +26,18 @@ android {
         }
     }
 
+    lint {
+        // This compiles against Java 17 but installs on Android 11, so a call to an API newer than
+        // minSdk compiles cleanly and then dies with NoSuchMethodError on the device. NewApi is what
+        // catches that; it already did for the Spotify urls once, but only when lint was run by hand.
+        // Checked on release so it is part of the build that gets installed.
+        checkReleaseBuilds true
+        abortOnError true
+        // Everything else stays a warning: the launcher is sideloaded, and the policy here is that
+        // only correctness issues block a build.
+        warningsAsErrors false
+    }
+
     packagingOptions {
         resources {
             // Kotlin metadata pulled in by AndroidX's dependencies. This launcher is plain Java and never reads it;
