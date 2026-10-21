@@ -148,6 +148,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private int glassAccent;
     private int ambientColor = -1;
     private ValueAnimator ambientAnimator;
+    /**
+     * Whether the top shelf is meant to be up. Never trusted on its own: see {@link #heroVisible()}.
+     */
     private boolean heroShown;
     private boolean animations;
     private boolean advancedEffects;
@@ -181,6 +184,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private float glassScrollShift;
     private int glassCardW;   // width of the tile the glass was last fitted to
     private boolean glassShown;
+
+    /**
+     * Whether the glass is actually on screen, not merely meant to be.
+     *
+     * <p>{@link #glassShown} is set as soon as a fade-in is <em>started</em>, so it can be true while
+     * the alpha is still 0 — when the activity is destroyed mid-fade (leaving the launcher for an app,
+     * a low-memory TV, or Developer options → "Don't keep activities") the animation never finishes and
+     * the flag stays wrong. Reading the real alpha instead means the next pass re-shows the view rather
+     * than skipping it because a stale flag said it was already up. Without this the launcher could come
+     * back from an app drawn but empty, showing that app's last frame.
+     */
+    private boolean glassVisible() {
+        return glassShown && glass.getAlpha() > 0f;
+    }
+
+    /** The hero's counterpart to {@link #glassVisible()}, with the same stale-flag hazard. */
+    private boolean heroVisible() {
+        return heroShown && hero.getAlpha() > 0f;
+    }
     private final Rect tileRect = new Rect();
     private final Rect revealRect = new Rect();
     // Static so they survive the activity being destroyed while another app is open (low-memory TVs,
@@ -1167,7 +1189,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             glassAccent = accent;
             glass.setAccent(accent);
         }
-        if (!glassShown) {
+        if (!glassVisible()) {
             springX.cancel();
             springY.cancel();
             glass.setTranslationX(x);
@@ -1503,7 +1525,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (!animations) {
                 ambient.setAlpha(1f);
                 heroShown = true;
-            } else if (!heroShown) {
+            } else if (!heroVisible()) {
                 ambient.setAlpha(0f);
                 ambient.animate().alpha(1f).setDuration(160).start();
                 heroShown = true;
@@ -1511,7 +1533,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return;
         }
 
-        if (!heroShown) {
+        if (!heroVisible()) {
             stopAmbientAnimation();
             hero.animate().cancel();
             ambient.animate().cancel();
