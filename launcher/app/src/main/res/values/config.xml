@@ -110,6 +110,10 @@
          needs a server address and a token, and it is the launcher's only network call. Set the two keys
          below in a theme's config.json rather than here: a token in a build is a token in the repo. -->
     <bool name="continue_watching">false</bool>
+    <!-- The dock app the row appears under, and the one a card click opens. Defaults to Plex for
+         Android; set it to com.edde746.plezy for the Plezy client, or to whichever client you run.
+         The row is anchored to this package's dock tile, so it only shows while that tile has focus. -->
+    <string name="plex_app" translatable="false">com.plexapp.android</string>
     <!-- Server address, "192.168.120.230" or "http://192.168.120.230:32400" (the scheme and Plex's port
          32400 are filled in when left off; a trailing slash is dropped). Empty disables the row. -->
     <string name="plex_url" translatable="false"></string>

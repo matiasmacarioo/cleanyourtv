@@ -110,6 +110,16 @@ final class Config {
     final boolean cinematicHome;
     /** The Plex on-deck row above the dock (config.xml, continue_watching). */
     final boolean continueWatching;
+    /**
+     * The dock tile the on-deck row hangs from (config.xml and a theme's {@code plex_app}),
+     * Plex for Android by default.
+     *
+     * <p>A shelf is anchored to a dock tile, so the row only appears while that package's tile has
+     * focus. That package is also the one a card click opens. Keeping it configurable means the row
+     * follows the dock when the client is swapped: Plezy reads the same server, so a theme running
+     * Plezy instead of Plex sets this and the row moves with it rather than vanishing.
+     */
+    final String plexApp;
     /** That row's server address, normalised to a usable root; empty when no Plex is configured. */
     final String plexUrl;
     /** The Plex token, or empty. Kept out of every log line and commit. */
@@ -135,7 +145,7 @@ final class Config {
                    int wallpaperRotationMinutes, int wallpaperDim, boolean overlayApplied,
                    Festival festival, int[] inputKeycodes, List<String> appKeys,
                    List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean bluetoothPill,
-                   boolean inputKeyServiceTv, boolean continueWatching, String plexUrl, String plexToken,
+                   boolean inputKeyServiceTv, boolean continueWatching, String plexApp, String plexUrl, String plexToken,
                    int continueWatchingMax, boolean spotifyRow, String spotifyClientId,
                    String spotifyRefreshToken, int spotifyRowMax) {
         this.inputKeycodes = inputKeycodes;
@@ -182,6 +192,7 @@ final class Config {
         this.raceCalendar = Collections.unmodifiableList(raceCalendar);
         this.cinematicHome = cinematicHome;
         this.continueWatching = continueWatching;
+        this.plexApp = plexApp;
         this.plexUrl = plexUrl;
         this.plexToken = plexToken;
         this.continueWatchingMax = continueWatchingMax;
@@ -234,6 +245,7 @@ final class Config {
         List<String> appKeys = new ArrayList<>(Arrays.asList(res.getStringArray(R.array.app_keys)));
         boolean cinematic = res.getBoolean(R.bool.cinematic_home);
         boolean continueWatching = res.getBoolean(R.bool.continue_watching);
+        String plexApp = res.getString(R.string.plex_app).trim();
         String plexUrlRaw = res.getString(R.string.plex_url).trim();
         String plexToken = res.getString(R.string.plex_token).trim();
         int continueWatchingMax = res.getInteger(R.integer.continue_watching_max);
@@ -284,6 +296,7 @@ final class Config {
             appKeys = stringList(json, "app_keys", appKeys);
             cinematic = bool(json, "cinematic_home", cinematic);
             continueWatching = bool(json, "continue_watching", continueWatching);
+            plexApp = string(json, "plex_app", plexApp).trim();
             plexUrlRaw = string(json, "plex_url", plexUrlRaw).trim();
             plexToken = string(json, "plex_token", plexToken).trim();
             continueWatchingMax = integer(json, "continue_watching_max", continueWatchingMax, 1, 20);
@@ -347,6 +360,7 @@ final class Config {
                 festival, inputKeycodes, appKeys, json == null ? Collections.emptyList() : raceCalendar(json), cinematic,
                 bluetoothPill, inputKeyServiceTv,
                 continueWatching && !PlexUrls.normalise(plexUrlRaw).isEmpty(),
+                plexApp.isEmpty() ? ContinueWatchingDefaults.PLEX_PACKAGE : plexApp,
                 PlexUrls.normalise(plexUrlRaw), plexToken, Math.max(1, continueWatchingMax),
                 spotifyRow && new SpotifyAuth(spotifyClientId, spotifyRefreshToken).isConfigured(),
                 spotifyClientId, preferredSpotifyToken(ctx, spotifyRefreshToken),

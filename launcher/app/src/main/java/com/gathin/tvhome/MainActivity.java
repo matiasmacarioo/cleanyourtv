@@ -1236,6 +1236,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (!cfg.continueWatching) return;
         View host = findViewById(R.id.continueWatching);
         if (host == null) return;
+        // The tile the row hangs from, and the app a card click opens. Plex by default, Plezy or any
+        // other client when the theme says so, so swapping the dock app moves the row with it.
+        continueWatchingPackage = cfg.plexApp;
         final String url = cfg.plexUrl;
         final String token = cfg.plexToken;
         continueWatchingData = new ContinueWatching(this, url, token, cfg.continueWatchingMax);
@@ -1265,7 +1268,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 // https form this used to send matched a downloader app rather than Plex. So a click
                 // opens the app itself - which is honest about what it can do - rather than a link
                 // that half-works.
-                open(PlexPage.launchIntent(MainActivity.this));
+                open(PlexPage.launchIntent(MainActivity.this, continueWatchingPackage));
             }
         });
         continueWatching.setItems(continueWatchingData.current());
@@ -1439,7 +1442,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /**
      * Finds the dock tile that owns the Plex shelf. The package comes from the theme's plex_app,
-     * defaulting to Plex for Android. -1 when Plex is not in the dock, which leaves the row unused.
+     * defaulting to Plex for Android. -1 when that app is not in the dock, which leaves the row unused.
      */
     private void resolveContinueWatchingPosition() {
         continueWatchingPosition = dockPositionOf(continueWatchingPackage, continueWatching != null);

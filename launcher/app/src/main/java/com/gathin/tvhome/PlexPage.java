@@ -27,15 +27,18 @@ final class PlexPage {
     private PlexPage() {}
 
     /**
-     * Opens the Plex app's own front screen. Null when Plex is not installed, which the caller treats
-     * as a no-op rather than crashing on a card for an app that has been removed.
+     * Opens the Plex client's own front screen. Null when that app is not installed, which the caller
+     * treats as a no-op rather than crashing on a card for an app that has been removed.
+     *
+     * <p>{@code pkg} is the client to open: Plex for Android by default, or whichever app the theme
+     * set as {@code plex_app}. Plezy and Plex read the same server, so the row and the click follow
+     * the same key.
      */
-    static Intent launchIntent(Context ctx) {
-        Intent launch = ctx.getPackageManager()
-                .getLeanbackLaunchIntentForPackage(ContinueWatchingDefaults.PLEX_PACKAGE);
+    static Intent launchIntent(Context ctx, String pkg) {
+        if (pkg == null || pkg.isEmpty()) return null;
+        Intent launch = ctx.getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
         if (launch == null) {
-            launch = ctx.getPackageManager()
-                    .getLaunchIntentForPackage(ContinueWatchingDefaults.PLEX_PACKAGE);
+            launch = ctx.getPackageManager().getLaunchIntentForPackage(pkg);
         }
         if (launch != null) launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         return launch;
