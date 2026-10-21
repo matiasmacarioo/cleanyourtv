@@ -116,4 +116,50 @@ public class PlexUrlsTest {
         assertFalse(safe.contains(secret));
         assertTrue(safe.contains("REDACTED"));
     }
+
+    /** The identity endpoint, which is where a Plezy link's machineIdentifier comes from. */
+    @Test
+    public void identityCarriesTheToken() {
+        assertEquals("http://10.0.0.1:32400/identity?X-Plex-Token=abc",
+                PlexUrls.identity("http://10.0.0.1:32400", "abc"));
+    }
+
+    /**
+     * The exact shape verified against Plezy 2.23.0 on the TV, and the one its source parses: a
+     * {@code play} host with a {@code content_id} of {@code plezy_<server>_<ratingKey>}. The
+     * parameter is percent-encoded, so the underscores survive and nothing in the value can end it
+     * early.
+     */
+    @Test
+    public void buildsThePlayLinkPlezyParses() {
+        String machine = "c33593fef84063e28ac29f752383a01c8310bb4c";
+        assertEquals("plezy://play?content_id=plezy_" + machine + "_217769",
+                PlexUrls.plezyDeepLink(machine, "217769"));
+    }
+
+    /**
+     * No server identity means no link. A theme whose server was asleep, or whose {@code /identity}
+     * failed, must open the app instead of sending {@code plezy__217769}, which Plezy would read as
+     * a server named "".
+     */
+    @Test
+    public void noLinkWithoutAMachineIdentifier() {
+        assertEquals("", PlexUrls.plezyDeepLink("", "217769"));
+        assertEquals("", PlexUrls.plezyDeepLink(null, "217769"));
+    }
+
+    /** Likewise no item: a card with no ratingKey has nothing to open. */
+    @Test
+    public void noLinkWithoutARatingKey() {
+        assertEquals("", PlexUrls.plezyDeepLink("machine", ""));
+        assertEquals("", PlexUrls.plezyDeepLink("machine", null));
+    }
+
+    /** The link is handed to another app, so it must never carry the token. */
+    @Test
+    public void theLinkCarriesNoToken() {
+        String link = PlexUrls.plezyDeepLink("machine", "217769");
+        assertTrue(link.startsWith("plezy://play?content_id="));
+        assertFalse("no token in a link handed to another app", link.contains("X-Plex-Token"));
+    }
 }

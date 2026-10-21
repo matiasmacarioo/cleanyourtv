@@ -2,6 +2,8 @@ package com.gathin.tvhome;
 
 import android.util.Log;
 
+import org.json.JSONObject;
+
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -29,6 +31,8 @@ final class PlexClient {
 
     private final String base;
     private final String token;
+    /** The server's machineIdentifier once read; null until then, so a failure is retried. */
+    private String machineIdentifier;
 
     PlexClient(String base, String token) {
         this.base = base;
@@ -63,6 +67,30 @@ final class PlexClient {
         } catch (Exception e) {
             Log.w(TAG, "on-deck fetch failed for " + PlexUrls.redact(url) + ": " + e);
             return java.util.Collections.emptyList();
+        }
+    }
+
+    /**
+     * The server's {@code machineIdentifier}, or empty when it cannot be read.
+     *
+     * <p>Needed to build a Plezy deep link, and cached: it never changes for a given server, and a
+     * card click should not wait on a second round trip every time. A failure is not cached, so a
+     * server that was asleep when the row was drawn is retried on the next click.
+     */
+    synchronized String machineIdentifier() {
+        if (machineIdentifier != null) return machineIdentifier;
+        if (!isConfigured()) return "";
+        String url = PlexUrls.identity(base, token);
+        try {
+            String body = get(url);
+            if (body == null) return "";
+            JSONObject container = new JSONObject(body).optJSONObject("MediaContainer");
+            String id = container == null ? "" : container.optString("machineIdentifier", "");
+            if (!id.isEmpty()) machineIdentifier = id;
+            return id;
+        } catch (Exception e) {
+            Log.d(TAG, "identity fetch failed for " + PlexUrls.redact(url) + ": " + e);
+            return "";
         }
     }
 

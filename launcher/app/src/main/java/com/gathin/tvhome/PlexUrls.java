@@ -47,6 +47,35 @@ final class PlexUrls {
     }
 
     /**
+     * The server's identity, whose {@code machineIdentifier} a Plezy deep link needs.
+     *
+     * <p>Not taken from the on-deck response: the {@code identifier} that carries is
+     * {@code com.plexapp.plugins.library}, the plugin's name rather than the server's.
+     */
+    static String identity(String base, String token) {
+        return withToken(base + "/identity", token);
+    }
+
+    /**
+     * A Plezy deep link that opens one item directly, or empty when the required pieces are missing.
+     *
+     * <p>The shape is Plezy's own, read off its manifest and source: a {@code plezy} scheme with the
+     * {@code play} host and a single {@code content_id} parameter of
+     * {@code plezy_<machineIdentifier>_<ratingKey>}. Plezy splits that back into the server and the
+     * item, fetches the item from the server, and starts playing it — resuming at the saved position,
+     * since Plex keeps that server-side.
+     *
+     * <p>Plex for Android has no equivalent: its {@code plex://} forms land on the app's home screen,
+     * which is why a card used to open the app and nothing more. A theme running Plezy gets the better
+     * behaviour for free, and one running Plex still gets the app.
+     */
+    static String plezyDeepLink(String machineIdentifier, String ratingKey) {
+        if (machineIdentifier == null || machineIdentifier.isEmpty()) return "";
+        if (ratingKey == null || ratingKey.isEmpty()) return "";
+        return "plezy://play?content_id=" + encode("plezy_" + machineIdentifier + "_" + ratingKey);
+    }
+
+    /**
      * A poster for {@code path} (an item's {@code thumb}) at {@code width} by {@code height} pixels.
      * Plex resizes and transcodes on demand through {@code /photo/:/transcode}, so the TV never
      * downloads the multi-megabyte original.

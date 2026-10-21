@@ -100,6 +100,33 @@ final class ContinueWatching {
         });
     }
 
+    /**
+     * Builds the deep link that opens {@code ratingKey}'s item directly, and hands it to
+     * {@code onLink} on the main thread; an empty link means no direct link could be made.
+     *
+     * <p>Runs on the worker because it needs the server's {@code machineIdentifier}, which is one
+     * more request. The client caches it, so only the first click after a start pays for it, and the
+     * work is off-thread so a sleeping server cannot freeze the row mid-click.
+     */
+    void deepLink(String ratingKey, java.util.function.Consumer<String> onLink) {
+        io.execute(() -> {
+            String link;
+            try {
+                link = PlexUrls.plezyDeepLink(client.machineIdentifier(), ratingKey);
+            } catch (Exception e) {
+                Log.w(TAG, "deep link build failed: " + e);
+                link = "";
+            }
+            if (link.isEmpty()) {
+                // Not a fault: Plex for Android has no item link, and any server hiccup lands here
+                // too. Debug because the caller falls back to opening the app, which still works.
+                Log.d(TAG, "no direct link for ratingKey " + ratingKey + ", opening the app instead");
+            }
+            final String out = link;
+            main.post(() -> onLink.accept(out));
+        });
+    }
+
     /** Re-fetches only when the last good reply is old enough to be worth replacing. */
     void refreshIfStale(Listener listener) {
         if (System.currentTimeMillis() - fetchedAt < STALE_AFTER_MS && hasItems()) return;

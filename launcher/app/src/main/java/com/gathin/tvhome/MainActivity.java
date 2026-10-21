@@ -1263,12 +1263,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
 
             @Override public void onItemClicked(RowItem item) {
-                // Plex's TV app has no link shape that opens a given item: its own plex://watch and
-                // plex://<serverId>/<type>/<key> forms both drop onto the app's home screen, and the
-                // https form this used to send matched a downloader app rather than Plex. So a click
-                // opens the app itself - which is honest about what it can do - rather than a link
-                // that half-works.
-                open(PlexPage.launchIntent(MainActivity.this, continueWatchingPackage));
+                // Prefer opening the item itself. Plezy has a link shape for that (see PlexPage), so
+                // a card click resumes the episode rather than opening the app's front screen. The
+                // link needs the server's machineIdentifier, a second request, so it is built off
+                // the main thread; Plex for Android has no such link and falls through to the app.
+                String ratingKey = item instanceof PlexItem ? ((PlexItem) item).ratingKey : "";
+                continueWatchingData.deepLink(ratingKey,
+                        link -> open(PlexPage.cardIntent(MainActivity.this, continueWatchingPackage, link)));
             }
         });
         continueWatching.setItems(continueWatchingData.current());

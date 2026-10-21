@@ -2,12 +2,12 @@ package com.gathin.tvhome;
 
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 
 /**
- * The Intent that opens Plex.
+ * The Intents that open a Plex client, and that open one item directly where the client allows it.
  *
- * <p>It deliberately opens the app rather than an item. Plex for Android has no link shape this
- * launcher can use to open one:
+ * <p>Plex for Android has no link shape this launcher can use to open an item:
  *
  * <ul>
  *   <li>Its {@code plex:} filter declares only the scheme, no authority and no path, and the shapes
@@ -20,14 +20,36 @@ import android.content.Intent;
  *       is not even owned by Plex here: on this TV it resolved to an unrelated downloader app.</li>
  * </ul>
  *
- * <p>So a card click opens Plex itself. That is a smaller promise than "resume this episode", but it
- * is one the app actually keeps, and the deck is already on the row above for choosing what to play.
+ * <p>Plezy does have one, so when the theme names it a card click opens the item itself and playback
+ * begins. Under Plex the click still opens the app, which is a smaller promise but one it keeps; the
+ * deck is on the row above either way for choosing what to play.
  */
 final class PlexPage {
     private PlexPage() {}
 
+    /** The Plezy client, the only one whose link shape opens a given item. */
+    static final String PLEZY_PACKAGE = "com.edde746.plezy";
+
     /**
-     * Opens the Plex client's own front screen. Null when that app is not installed, which the caller
+     * The Intent for a tap on a Continue Watching card: the item itself where {@code link} is
+     * usable, otherwise the client's front screen.
+     *
+     * <p>The link is only sent when Plezy is the configured client and something on the device
+     * resolves it, so a leftover link cannot fire an {@code ActivityNotFoundException}` after Plezy
+     * is uninstalled. Every other client, and every failure to build a link, opens the app by
+     * package instead — a smaller promise, but one Plex for Android actually keeps.
+     */
+    static Intent cardIntent(Context ctx, String pkg, String link) {
+        if (link != null && !link.isEmpty() && PLEZY_PACKAGE.equals(pkg)) {
+            Intent view = new Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (view.resolveActivity(ctx.getPackageManager()) != null) return view;
+        }
+        return launchIntent(ctx, pkg);
+    }
+
+    /**
+     * Opens the client's own front screen. Null when that app is not installed, which the caller
      * treats as a no-op rather than crashing on a card for an app that has been removed.
      *
      * <p>{@code pkg} is the client to open: Plex for Android by default, or whichever app the theme
