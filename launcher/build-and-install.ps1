@@ -58,6 +58,12 @@ Write-Host "Stock launcher: $StockLauncher"
 $disableStock = if ($StockLauncher -eq 'none') { 'echo stock launcher left alone' } else { "pm disable-user --user 0 $StockLauncher" }
 
 $apk = 'app\build\outputs\apk\release\app-release.apk'
+# Remember Home's accessibility services before the install, and put them back after. `pm install -r`
+# drops a force-stopped app's services from enabled_accessibility_services and turns accessibility_enabled
+# off (asynchronously, so the write has to happen after a pause). Without this, HomeKeyService and
+# InputKeyService stay unbound and the remote's Home button stops reaching the launcher - which looks
+# exactly like the app having crashed, and is why this is captured here rather than after.
+$accessibilityBefore = (& $py -I ..\tools\tv.py 'settings get secure enabled_accessibility_services').Trim()
 & $py -I ..\tools\b64push.py $apk /data/local/tmp/tvhome.apk
 if ($LASTEXITCODE -ne 0) { throw 'APK upload failed' }
 $out = & $py -I ..\tools\tv.py 'pm install -r /data/local/tmp/tvhome.apk; rm -f /data/local/tmp/tvhome.apk'
@@ -98,6 +104,20 @@ function Enable-Service([string]$Name) {
     # TV's shell then fails with "no closing quote" while the service stays off.
     ('s=$(settings get secure enabled_accessibility_services); case "$s" in *' + $Name + '*) ;; null|"") settings put secure enabled_accessibility_services ' + $svc + ' ;; *) settings put secure enabled_accessibility_services "$s:' + $svc + '" ;; esac; settings put secure accessibility_enabled 1; echo ' + $Name + ' enabled') |
         & $py -I ..\tools\tv.py --batch
+}
+# Put back the services the install knocked out. Writing the list back as-is is not enough: the install
+# also turns accessibility_enabled off, and a service only rebinds once the list itself changes. Devices
+# that keep the service in the "crashed" state need the list cleared first, or it stays unbound for good -
+# the reboot that used to be the only cure. Same sequence as tools/theme.ps1.
+if ($accessibilityBefore -match 'com\.gathin\.tvhome') {
+    # The empty list needs the TV shell to see two single quotes, so they cannot appear inside a
+    # single-quoted PowerShell string. Built by concatenation instead, and passed on stdin as --batch.
+    $repair = "settings put secure enabled_accessibility_services " + "''" + "; " `
+        + "settings put secure accessibility_enabled 0; sleep 1; " `
+        + "settings put secure enabled_accessibility_services '" + $accessibilityBefore + "'; " `
+        + "settings put secure accessibility_enabled 1; sleep 2; " `
+        + "dumpsys accessibility | grep -i 'Bound services' | head -n 1"
+    $repair | & $py -I ..\tools\tv.py --batch
 }
 if ($InputKeyService) { Enable-Service 'InputKeyService' }
 if ($HomeKeyService) { Enable-Service 'HomeKeyService' }

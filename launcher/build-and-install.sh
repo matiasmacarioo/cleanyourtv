@@ -61,6 +61,11 @@ HOME_QUERY='cmd package resolve-activity --brief -a android.intent.action.MAIN -
 if [ "$STOCK_LAUNCHER" = none ]; then DISABLE_STOCK="echo stock launcher left alone"
 else DISABLE_STOCK="pm disable-user --user 0 $STOCK_LAUNCHER"; fi
 APK=app/build/outputs/apk/release/app-release.apk
+# Remember Home's accessibility services before the install, and put them back after. `pm install -r`
+# drops a force-stopped app's services from enabled_accessibility_services and turns accessibility_enabled
+# off, so HomeKeyService and InputKeyService stay unbound and the remote's Home button stops reaching the
+# launcher - which looks exactly like a crashed app.
+ACCESSIBILITY_BEFORE=$("$PY" -I ../tools/tv.py 'settings get secure enabled_accessibility_services' | tr -d '\r')
 "$PY" -I ../tools/b64push.py "$APK" /data/local/tmp/tvhome.apk
 # Install on its own: in the batch below a failed install (e.g. "not enough space" on a full /data)
 # would not stop the stock launcher from being disabled.
@@ -159,4 +164,13 @@ enable_service() {   # appends to enabled_accessibility_services without droppin
 }
 if [ "${INPUT_KEY_SERVICE:-0}" = 1 ]; then enable_service InputKeyService; fi
 if [ "${HOME_KEY_SERVICE:-0}" = 1 ]; then enable_service HomeKeyService; fi
+# Put back the services the install knocked out. Writing the list back as-is is not enough: the install
+# also turns accessibility_enabled off, and a service only rebinds once the list itself changes. Devices
+# that keep the service in the "crashed" state need the list cleared first, or it stays unbound for good -
+# the reboot that used to be the only cure. Same sequence as tools/theme.ps1.
+case "$ACCESSIBILITY_BEFORE" in
+  *com.gathin.tvhome*)
+    "$PY" -I ../tools/tv.py "settings put secure enabled_accessibility_services ''; settings put secure accessibility_enabled 0; sleep 1; settings put secure enabled_accessibility_services '$ACCESSIBILITY_BEFORE'; settings put secure accessibility_enabled 1; sleep 2; dumpsys accessibility | grep -i 'Bound services' | head -n 1"
+    ;;
+esac
 echo "Installed. Press Home on the remote to see it."
